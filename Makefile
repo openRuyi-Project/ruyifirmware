@@ -143,7 +143,13 @@ help:
 	  'make dtb | opensbi-normal | edk2-normal | coreboot-normal' \
 	  'Overrides: BUILD=/absolute/output JOBS=8 CROSS_COMPILE=/path/riscv64-linux-gnu- PYTHON=python3'
 
-.PHONY: prepare
+.PHONY: prepare verify package
 prepare:
 	git -C "$(ROOT)" submodule sync --recursive
 	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
+
+verify: all
+	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)"
+
+package: verify
+	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(ROOT)/dist/$(TARGET)"

@@ -9,8 +9,10 @@ Build on Ubuntu 26.04:
 git clone --recurse-submodules https://github.com/openRuyi-Project/ruyifirmware.git
 cd ruyifirmware
 sudo bash ci/install-deps.sh
-make                         # RELEASE
-make TARGET=DEBUG
+make package                         # RELEASE
+make package TARGET=DEBUG
 ```
 
-Outputs: `build/RELEASE/` or `build/DEBUG/`.
+Outputs: `dist/RELEASE/` or `dist/DEBUG/`.
+
+[K3 Pico ITX flashing](docs/k3/INSTALL.txt)

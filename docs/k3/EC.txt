@@ -1,0 +1,21 @@
+EC flashing (SpacemiT K3 Pico ITX and K3 Deb1)
+
+EC flashing is supported only in EDK2 Fastboot. Use the ec.bin supplied
+by SpacemiT for your board.
+
+  fastboot devices
+  fastboot getvar version-ec
+  fastboot flash ec ec.bin
+
+Keep power connected. Restart the EC only after flash and verification
+report OKAY; retry on failure.
+
+  fastboot oem reboot-ec
+
+Wait 15 seconds, then reboot the board:
+
+  fastboot reboot
+
+Re-enter EDK2 Fastboot and check:
+
+  fastboot getvar version-ec

@@ -1,0 +1,26 @@
+Ruyi Firmware flashing (SpacemiT K3 Pico ITX)
+
+Use both images from the same build. Connect the download USB-C port and
+enter BootROM. Run these commands in the extracted package directory:
+
+  sha256sum -c SHA256SUMS
+  fastboot devices
+  fastboot stage recovery-bootrom.bin
+  fastboot continue
+
+Wait for USB Fastboot ready:
+
+  fastboot stage normal-spi.bin
+  fastboot continue
+
+Wait for RAM Recovery - USB Fastboot:
+
+  fastboot flash firmware normal-spi.bin
+
+After flash and verification report OKAY:
+
+  fastboot reboot
+
+For later updates, press F9 at boot and run the flash and reboot commands.
+
+For K3 Pico ITX and K3 Deb1 EC flashing, see EC.txt.
