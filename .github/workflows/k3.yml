@@ -1,0 +1,66 @@
+name: Build Ruyi Firmware (K3)
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [DEBUG, RELEASE]
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: sudo bash ci/install-deps.sh
+
+      - name: Build firmware
+        run: make package
+
+      - name: Archive firmware
+        run: |
+          version="${GITHUB_SHA:0:12}"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            version="${GITHUB_REF_NAME//\//-}"
+          fi
+          name="ruyifirmware-k3-pico-itx-${version}-${TARGET,,}"
+          mv "dist/$TARGET" "dist/$name"
+          tar -cJf "dist/$name.tar.xz" -C dist "$name"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: ruyifirmware-k3-pico-itx-${{ matrix.target }}
+          path: dist/*.tar.xz
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ruyifirmware-k3-pico-itx-*
+          path: release
+          merge-multiple: true
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Ruyi Firmware ${{ github.ref_name }}
+          files: release/*.tar.xz
+          fail_on_unmatched_files: true
+          prerelease: true
