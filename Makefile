@@ -26,7 +26,8 @@ DEBUG_PRINT_ERROR_LEVEL ?= 0x80000002
 else
 $(error TARGET must be DEBUG or RELEASE)
 endif
-BUILD ?= $(ROOT)/build/$(TARGET)
+VARIANT := $(if $(filter TRUE,$(X64EMU_ENABLE)),x64emu,no-x64emu)
+BUILD ?= $(ROOT)/build/$(VARIANT)/$(TARGET)
 BUILD := $(abspath $(BUILD))
 export CCACHE_DIR := $(BUILD)/ccache
 JOBS ?= 2
@@ -135,8 +136,9 @@ source-info:
 
 help:
 	printf '%s\n' 'make: RELEASE normal SPI + BootROM RAM recovery' \
-	  'make TARGET=DEBUG: DEBUG builds in build/DEBUG' \
-	  'X64EMU_ENABLE=FALSE: omit X64 UEFI emulation from normal firmware' \
+	  'make TARGET=DEBUG: DEBUG builds in build/<variant>/DEBUG' \
+	  'X64EMU_ENABLE=FALSE: omit X64 UEFI emulation (no-x64emu variant)' \
+	  'make package: verified images in dist/<variant>/<target>' \
 	  'DEBUG_PRINT_ERROR_LEVEL=<mask>: override the target EDK2 logging mask' \
 	  'make normal: build the shared firmware' \
 	  'make recovery: also extract its BootROM entry' \
@@ -152,4 +154,4 @@ verify: all
 	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)"
 
 package: verify
-	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(ROOT)/dist/$(TARGET)"
+	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(ROOT)/dist/$(VARIANT)/$(TARGET)"

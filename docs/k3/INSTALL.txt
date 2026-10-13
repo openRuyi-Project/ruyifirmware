@@ -1,7 +1,14 @@
 Ruyi Firmware flashing (SpacemiT K3 Pico ITX)
 
-Use both images from the same build. Connect the download USB-C port and
-enter BootROM. Run these commands in the extracted package directory:
+The tested RX550 GOPs truncate pointers and fault during initialization
+on K3, preventing UEFI/GRUB display. Use no-x64emu for RX550 and
+x64emu for RX6400.
+
+The no-x64emu variant uses the serial console until an operating system
+driver takes over. DEBUG and RELEASE are available for each variant.
+
+Use both images from the same variant and build. Connect the download
+USB-C port and enter BootROM. Run these commands in the extracted package directory:
 
   sha256sum -c SHA256SUMS
   fastboot devices

@@ -12,8 +12,15 @@ jobs:
       fail-fast: false
       matrix:
         target: [DEBUG, RELEASE]
+        emulation:
+          - name: x64emu
+            enabled: "TRUE"
+          - name: no-x64emu
+            enabled: "FALSE"
     env:
       TARGET: ${{ matrix.target }}
+      VARIANT: ${{ matrix.emulation.name }}
+      X64EMU_ENABLE: ${{ matrix.emulation.enabled }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,14 +39,14 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             version="${GITHUB_REF_NAME//\//-}"
           fi
-          name="ruyifirmware-k3-pico-itx-${version}-${TARGET,,}"
-          mv "dist/$TARGET" "dist/$name"
+          name="ruyifirmware-k3-pico-itx-${version}-${VARIANT}-${TARGET,,}"
+          mv "dist/$VARIANT/$TARGET" "dist/$name"
           tar -cJf "dist/$name.tar.xz" -C dist "$name"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v7
         with:
-          name: ruyifirmware-k3-pico-itx-${{ matrix.target }}
+          name: ruyifirmware-k3-pico-itx-${{ matrix.emulation.name }}-${{ matrix.target }}
           path: dist/*.tar.xz
           if-no-files-found: error
 
