@@ -1,0 +1,32 @@
+[submodule "coreboot"]
+	path = src/coreboot
+	url = https://github.com/openRuyi-Project/coreboot.git
+	shallow = true
+[submodule "opensbi"]
+	path = src/opensbi
+	url = https://github.com/openRuyi-Project/opensbi.git
+	shallow = true
+[submodule "edk2"]
+	path = src/edk2
+	url = https://github.com/openRuyi-Project/edk2.git
+	shallow = true
+[submodule "edk2-ruyi"]
+	path = src/edk2-ruyi
+	url = https://github.com/openRuyi-Project/edk2-ruyi.git
+	shallow = true
+[submodule "edk2-platforms"]
+	path = src/edk2-platforms
+	url = https://github.com/tianocore/edk2-platforms.git
+	shallow = true
+[submodule "MultiArchUefiPkg"]
+	path = src/MultiArchUefiPkg
+	url = https://github.com/openRuyi-Project/MultiArchUefiPkg.git
+	shallow = true
+[submodule "unicorn"]
+	path = src/unicorn
+	url = https://github.com/openRuyi-Project/unicorn-for-efi.git
+	shallow = true
+[submodule "linux"]
+	path = src/linux
+	url = https://github.com/openRuyi-Project/linux.git
+	shallow = true
