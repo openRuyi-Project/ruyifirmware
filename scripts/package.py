@@ -18,7 +18,7 @@ for name in ('normal-spi.bin', 'recovery-bootrom.bin'):
 for name in ('normal-spi.bin', 'recovery-bootrom.bin', 'source-revisions.txt',
              'submodules.txt', 'toolchain.txt', 'build-options.txt', 'image-checks.json'):
     shutil.copy2(build / name, output / name)
-for name in ('INSTALL.txt', 'EC.txt'):
+for name in ('README.md', 'INSTALL.txt', 'EC.txt'):
     shutil.copy2(ROOT / 'docs' / 'k3' / name, output / name)
 (output / 'build-revision.txt').write_text(
     subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True))

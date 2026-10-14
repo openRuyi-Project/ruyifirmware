@@ -4,8 +4,12 @@ The tested RX550 GOPs truncate pointers and fault during initialization
 on K3, preventing UEFI/GRUB display. Use no-x64emu for RX550 and
 x64emu for RX6400.
 
-The no-x64emu variant uses the serial console until an operating system
-driver takes over. DEBUG and RELEASE are available for each variant.
+With no-x64emu, a discrete GPU that needs an x64 GOP relies on its OS
+driver; the serial console and native K3 display remain available.
+DEBUG and RELEASE are available for each variant.
+
+SpacemiT vendor Linux is not supported.
+Linux mainline support is provided on a best-effort basis.
 
 Use both images from the same variant and build. Connect the download
 USB-C port and enter BootROM. Run these commands in the extracted package directory:
@@ -23,6 +27,11 @@ Wait for USB Fastboot ready:
 Wait for RAM Recovery - USB Fastboot:
 
   fastboot flash firmware normal-spi.bin
+
+The firmware target preserves UEFI variables and resets CPU selection to
+X100 only. It also clears DDR training records for retraining on the next
+normal boot. CPU Configuration saves its selection persistently, even
+when the firmware was loaded into RAM.
 
 After flash and verification report OKAY:
 
