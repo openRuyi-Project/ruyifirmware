@@ -26,8 +26,8 @@ See [firmware installation](INSTALL.txt) and [EC updates](EC.txt).
 ## UEFI driver emulation
 
 Both DEBUG and RELEASE include x64 and ARM64 emulation. It is disabled
-by default. Enable it in UEFI Setup → UEFI Driver Emulation → Enable
-driver emulation, then save and restart. The setting is stored in a
+by default. Enable it in UEFI Setup → Platform Settings → UEFI driver
+emulation, then save and restart. The setting is stored in a
 dedicated SPI sector and remains persistent when saved from RAM recovery.
 Firmware updates reset emulation to disabled.
 
@@ -63,7 +63,7 @@ Linux mainline support is provided on a best-effort basis.
 
 ## CPU modes
 
-UEFI Setup → CPU Configuration → CPU mode selects one of three profiles:
+UEFI Setup → Platform Settings → CPU mode selects one of three profiles:
 
 | Mode | Cores | Vector support | Hypervisor support | CPU name |
 | --- | --- | --- | --- | --- |

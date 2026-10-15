@@ -1,7 +1,8 @@
 Ruyi Firmware flashing (SpacemiT K3 Pico ITX)
 
 DEBUG and RELEASE both include UEFI driver emulation, disabled by default.
-Enable it in UEFI Setup -> UEFI Driver Emulation, save and restart to apply.
+Enable it in UEFI Setup -> Platform Settings -> UEFI driver emulation,
+then save and restart to apply.
 The setting persists in SPI even when saved from RAM recovery.
 RX6400 has been tested for UEFI/GRUB display with x64 emulation.
 
@@ -33,7 +34,7 @@ Wait for RAM Recovery - USB Fastboot:
 
 The firmware target preserves UEFI variables, resets CPU selection to
 X100 only and disables driver emulation. It also clears DDR training records for retraining on the next
-normal boot. CPU Configuration saves its selection persistently, even
+normal boot. Platform Settings saves its selections persistently, even
 when the firmware was loaded into RAM.
 
 After flash and verification report OKAY:
