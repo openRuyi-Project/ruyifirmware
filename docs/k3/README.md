@@ -83,3 +83,7 @@ device tree for tools such as fastfetch.
 
 Mixed mode needs userspace that can run without V, such as RV64GC.
 An RVA23U64 root filesystem is unsuitable for that mode.
+
+UEFI Setup → System Information displays the active CPU configuration,
+installed memory, PCIe devices and link speeds, and storage capacity and
+identity. Each page can refresh information from devices enumerated by UEFI.
