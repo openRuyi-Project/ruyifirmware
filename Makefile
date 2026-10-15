@@ -8,12 +8,6 @@ SHELL := /bin/bash
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 SOURCES := $(ROOT)/src
 TARGET ?= RELEASE
-X64EMU_ENABLE ?= TRUE
-ifneq ($(X64EMU_ENABLE),TRUE)
-ifneq ($(X64EMU_ENABLE),FALSE)
-$(error X64EMU_ENABLE must be TRUE or FALSE)
-endif
-endif
 ifeq ($(TARGET),DEBUG)
 COREBOOT_LOGLEVEL := 7
 SBI_FW_OPTIONS := 0
@@ -26,8 +20,7 @@ DEBUG_PRINT_ERROR_LEVEL ?= 0x80000002
 else
 $(error TARGET must be DEBUG or RELEASE)
 endif
-VARIANT := $(if $(filter TRUE,$(X64EMU_ENABLE)),x64emu,no-x64emu)
-BUILD ?= $(ROOT)/build/$(VARIANT)/$(TARGET)
+BUILD ?= $(ROOT)/build/$(TARGET)
 BUILD := $(abspath $(BUILD))
 export CCACHE_DIR := $(BUILD)/ccache
 JOBS ?= 2
@@ -39,11 +32,7 @@ SBI_NORMAL := $(BUILD)/opensbi-normal/platform/generic/firmware
 MAU_BUILD := $(BUILD)/multiarch/Build/MultiArchUefiPkg/$(TARGET)_GCC/RISCV64
 MAU_EFI := $(MAU_BUILD)/EmulatorDxe.efi
 MAU_DEPEX := $(MAU_BUILD)/MultiArchUefiPkg/Drivers/Emulator/Emulator/OUTPUT/EmulatorDxe.depex
-X64EMU_FLAGS := -D X64EMU_ENABLE=$(X64EMU_ENABLE)
-ifeq ($(X64EMU_ENABLE),TRUE)
-X64EMU_FLAGS += -D X64EMU_EFI="$(MAU_EFI)" -D X64EMU_DEPEX="$(MAU_DEPEX)"
 edk2-normal: multiarch
-endif
 PACK := $(PYTHON) $(ROOT)/tools/k3image.py
 EDK_LOG_FLAGS := -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL)
 
@@ -85,21 +74,24 @@ opensbi-normal:
 .PHONY: multiarch
 multiarch:
 	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
-	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) \
+	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE MAU_SUPPORTS_AARCH64_BINS=YES \
 	  CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
 
 edk2-normal:
 	mkdir -p "$(EDK_WORK)/Conf"
+	$(PYTHON) "$(SOURCES)/edk2-ruyi/tools/fetch-amd-gop.py" "$(EDK_WORK)/K3AmdGop"
+	mkdir -p "$(EDK_WORK)/X64EmulatorBin"
+	cp "$(MAU_EFI)" "$(MAU_DEPEX)" "$(EDK_WORK)/X64EmulatorBin/"
 	$(MAKE) -C "$(SOURCES)/edk2/BaseTools/Source/C" -j$(JOBS)
 	export WORKSPACE="$(EDK_WORK)"
-	export PACKAGES_PATH="$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
+	export PACKAGES_PATH="$(EDK_WORK):$(SOURCES):$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
 	export GCC_RISCV64_PREFIX="$(CROSS_COMPILE)" PYTHON_COMMAND="$(PYTHON)"
 	export CONF_PATH="$(EDK_WORK)/Conf"
 	unset EDK_TOOLS_PATH
 	set +u
 	source "$(SOURCES)/edk2/edksetup.sh"
 	set -u
-	build -a RISCV64 -p SpacemitPlatformPkg/K3/PicoItx/PicoItx.dsc -t GCC -b $(TARGET) -n $(JOBS) $(EDK_LOG_FLAGS) $(X64EMU_FLAGS)
+	build -a RISCV64 -p SpacemitPlatformPkg/K3/PicoItx/PicoItx.dsc -t GCC -b $(TARGET) -n $(JOBS) $(EDK_LOG_FLAGS) -D X64EMU_ENABLE=TRUE
 
 DTB := $(BUILD)/k3-pico-itx.dtb
 dtb:
@@ -125,25 +117,26 @@ dtb:
 
 source-info:
 	mkdir -p "$(BUILD)"
-	for tree in coreboot opensbi edk2 edk2-ruyi linux edk2-platforms $(if $(filter TRUE,$(X64EMU_ENABLE)),MultiArchUefiPkg unicorn); do
+	for tree in coreboot opensbi edk2 edk2-ruyi linux edk2-platforms MultiArchUefiPkg unicorn; do
 	  printf '%-18s ' "$$tree"
 	  git -C "$(SOURCES)/$$tree" rev-parse HEAD
 	done > "$(BUILD)/source-revisions.txt"
+	cp "$(EDK_WORK)/K3AmdGop/amd-gop.json" "$(BUILD)/amd-gop.json"
 	git -C "$(ROOT)" submodule status --recursive > "$(BUILD)/submodules.txt"
 	$(CROSS_COMPILE)gcc --version > "$(BUILD)/toolchain.txt"
-	printf 'TARGET=%s\nX64EMU_ENABLE=%s\nCOREBOOT_LOGLEVEL=%s\nOPENSBI_FW_OPTIONS=%s\nEDK2_DEBUG_PRINT_ERROR_LEVEL=%s\n' \
-	  "$(TARGET)" "$(X64EMU_ENABLE)" "$(COREBOOT_LOGLEVEL)" "$(SBI_FW_OPTIONS)" "$(DEBUG_PRINT_ERROR_LEVEL)" > "$(BUILD)/build-options.txt"
+	printf 'TARGET=%s\nX64EMU_ENABLE=%s\nMAU_SUPPORTS_AARCH64_BINS=YES\nCOREBOOT_LOGLEVEL=%s\nOPENSBI_FW_OPTIONS=%s\nEDK2_DEBUG_PRINT_ERROR_LEVEL=%s\n' \
+	  "$(TARGET)" "TRUE" "$(COREBOOT_LOGLEVEL)" "$(SBI_FW_OPTIONS)" "$(DEBUG_PRINT_ERROR_LEVEL)" > "$(BUILD)/build-options.txt"
 
 help:
 	printf '%s\n' 'make: RELEASE normal SPI + BootROM RAM recovery' \
-	  'make TARGET=DEBUG: DEBUG builds in build/<variant>/DEBUG' \
-	  'X64EMU_ENABLE=FALSE: omit X64 UEFI emulation (no-x64emu variant)' \
-	  'make package: verified images in dist/<variant>/<target>' \
+	  'make TARGET=DEBUG: DEBUG builds in build/DEBUG' \
+	  'UEFI driver emulation is included; enable it in Setup (default: disabled)' \
+	  'make package: verified images in dist/<target>' \
 	  'DEBUG_PRINT_ERROR_LEVEL=<mask>: override the target EDK2 logging mask' \
 	  'make normal: build the shared firmware' \
 	  'make recovery: also extract its BootROM entry' \
 	  'make dtb | opensbi-normal | edk2-normal | coreboot-normal' \
-	  'Overrides: BUILD=/absolute/output JOBS=8 CROSS_COMPILE=/path/riscv64-linux-gnu- PYTHON=python3'
+	  'Overrides: AMD_GOP_DIR=/downloaded/gops BUILD=/absolute/output JOBS=8 CROSS_COMPILE=/path/riscv64-linux-gnu- PYTHON=python3'
 
 .PHONY: prepare verify package
 prepare:
@@ -154,4 +147,4 @@ verify: all
 	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)"
 
 package: verify
-	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(ROOT)/dist/$(VARIANT)/$(TARGET)"
+	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(ROOT)/dist/$(TARGET)"

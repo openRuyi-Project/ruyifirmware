@@ -13,28 +13,48 @@ Build on Ubuntu 26.04:
 git clone --recurse-submodules https://github.com/openRuyi-Project/ruyifirmware.git
 cd ruyifirmware
 sudo bash ci/install-deps.sh
-make package                                      # x64emu RELEASE
-make package TARGET=DEBUG                         # x64emu DEBUG
-make package X64EMU_ENABLE=FALSE                   # no-x64emu RELEASE
-make package X64EMU_ENABLE=FALSE TARGET=DEBUG       # no-x64emu DEBUG
+make package                 # RELEASE
+make package TARGET=DEBUG    # DEBUG
 ```
 
-Packages are written to `dist/{x64emu,no-x64emu}/{DEBUG,RELEASE}/`.
-Build files use the same variant and target layout under `build/`.
+Packages are written to `dist/{DEBUG,RELEASE}/`.
+Build files use the same target layout under `build/`.
 
 Use `normal-spi.bin` and `recovery-bootrom.bin` from the same build.
 See [firmware installation](INSTALL.txt) and [EC updates](EC.txt).
 
-## Firmware variants
+## UEFI driver emulation
 
-`x64emu` runs compatible x64 UEFI option ROMs, including discrete GPU GOP
-drivers. `no-x64emu` omits the emulator; a discrete GPU that needs an x64
-GOP relies on its operating system driver. Native K3 display support is
-present in both variants.
+Both DEBUG and RELEASE include x64 and ARM64 emulation. It is disabled
+by default. Enable it in UEFI Setup → UEFI Driver Emulation → Enable
+driver emulation, then save and restart. The setting is stored in a
+dedicated SPI sector and remains persistent when saved from RAM recovery.
+Firmware updates reset emulation to disabled.
 
-The tested RX550 GOPs truncate pointers and fault during initialization
-on K3, preventing UEFI/GRUB display. Use `no-x64emu` for RX550.
-RX6400 has been tested with `x64emu` for UEFI/GRUB display.
+Onboard option ROMs use x64 by default. AMD GCN display devices in the
+platform PCI ID list use a platform-supplied ARM64 GOP instead:
+
+| Device family | GOP selection |
+| --- | --- |
+| Early GCN through Polaris, including Vega M | AMD Pre-SoC15 ARM64 1.68 |
+| Vega 10/12/20, Raven, Renoir, RDNA and other devices | Onboard x64 |
+
+The GCN replacement path is experimental. The policy preserves card ROM
+data, rejects unselected images before execution and restricts driver
+binding to matching controllers. A failed replacement does not fall
+back to the onboard x64 GOP. RX6400 has been tested with x64 emulation
+for UEFI/GRUB display. RX550 (`1002:67ff`) has been tested with ARM64
+GOP 1.68 for the same firmware display path.
+
+When emulation is disabled or no selected GOP starts, the discrete GPU
+relies on its OS driver for display. The serial console and native K3
+display remain available.
+
+The build downloads the original `Arm64Gop_1_68.efi` from the
+[AMD RN-AAR page](https://www.amd.com/en/resources/support-articles/release-notes/RN-AAR.html)
+and verifies its fixed SHA-256 hash. `AMD_GOP_DIR=/path/to/files` supplies
+this file for offline builds. It remains AMD software; its source URL
+and hash are included in the package's `amd-gop.json`.
 
 ## Operating systems
 

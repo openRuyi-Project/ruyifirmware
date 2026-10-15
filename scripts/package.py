@@ -16,7 +16,7 @@ for name in ('normal-spi.bin', 'recovery-bootrom.bin'):
     if hashlib.sha256((build / name).read_bytes()).hexdigest() != checks['images'][name]['sha256']:
         raise ValueError(f'{name} changed after verification')
 for name in ('normal-spi.bin', 'recovery-bootrom.bin', 'source-revisions.txt',
-             'submodules.txt', 'toolchain.txt', 'build-options.txt', 'image-checks.json'):
+             'submodules.txt', 'toolchain.txt', 'build-options.txt', 'image-checks.json', 'amd-gop.json'):
     shutil.copy2(build / name, output / name)
 for name in ('README.md', 'INSTALL.txt', 'EC.txt'):
     shutil.copy2(ROOT / 'docs' / 'k3' / name, output / name)

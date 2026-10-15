@@ -1,17 +1,20 @@
 Ruyi Firmware flashing (SpacemiT K3 Pico ITX)
 
-The tested RX550 GOPs truncate pointers and fault during initialization
-on K3, preventing UEFI/GRUB display. Use no-x64emu for RX550 and
-x64emu for RX6400.
+DEBUG and RELEASE both include UEFI driver emulation, disabled by default.
+Enable it in UEFI Setup -> UEFI Driver Emulation, save and restart to apply.
+The setting persists in SPI even when saved from RAM recovery.
+RX6400 has been tested for UEFI/GRUB display with x64 emulation.
 
-With no-x64emu, a discrete GPU that needs an x64 GOP relies on its OS
-driver; the serial console and native K3 display remain available.
-DEBUG and RELEASE are available for each variant.
+The platform selects AMD ARM64 GOP 1.68 for listed early GCN, Polaris
+and Vega M display devices, and onboard x64 GOPs for other devices.
+GCN replacement is experimental.
+A failed replacement does not fall back to the onboard x64 GOP.
+The serial console and native K3 display remain available.
 
 SpacemiT vendor Linux is not supported.
 Linux mainline support is provided on a best-effort basis.
 
-Use both images from the same variant and build. Connect the download
+Use both images from the same build. Connect the download
 USB-C port and enter BootROM. Run these commands in the extracted package directory:
 
   sha256sum -c SHA256SUMS
@@ -28,8 +31,8 @@ Wait for RAM Recovery - USB Fastboot:
 
   fastboot flash firmware normal-spi.bin
 
-The firmware target preserves UEFI variables and resets CPU selection to
-X100 only. It also clears DDR training records for retraining on the next
+The firmware target preserves UEFI variables, resets CPU selection to
+X100 only and disables driver emulation. It also clears DDR training records for retraining on the next
 normal boot. CPU Configuration saves its selection persistently, even
 when the firmware was loaded into RAM.
 
