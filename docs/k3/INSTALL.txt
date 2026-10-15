@@ -15,8 +15,10 @@ The serial console and native K3 display remain available.
 SpacemiT vendor Linux is not supported.
 Linux mainline support is provided on a best-effort basis.
 
-Use both images from the same build. Connect the download
-USB-C port and enter BootROM. Run these commands in the extracted package directory:
+First installation or migration from another firmware
+
+Use both images from the same build. Connect the download USB-C port and
+enter BootROM. Run these commands in the extracted package directory:
 
   sha256sum -c SHA256SUMS
   fastboot devices
@@ -28,19 +30,40 @@ Wait for USB Fastboot ready:
   fastboot stage normal-spi.bin
   fastboot continue
 
-Wait for RAM Recovery - USB Fastboot:
+Wait for RAM Recovery - USB Fastboot. For the first installation or when
+switching from another firmware, you must flash the entire SPI NOR:
 
-  fastboot flash firmware normal-spi.bin
+  fastboot flash spi normal-spi.bin
 
-The firmware target preserves UEFI variables, resets CPU selection to
-X100 only and disables driver emulation. It also clears DDR training records for retraining on the next
-normal boot. Platform Settings saves its selections persistently, even
-when the firmware was loaded into RAM.
+The spi target replaces the entire flash contents, including UEFI variables
+and platform settings. The firmware target requires an existing compatible
+Ruyi Firmware flash layout. Using it for a first installation or migration
+can fail with:
+
+  Writing 'firmware' FAILED (remote: 'Unsupported')
+  fastboot: error: Command failed
+
+In this case, use the flash spi command above.
 
 After flash and verification report OKAY:
 
   fastboot reboot
 
-For later updates, press F9 at boot and run the flash and reboot commands.
+Updating an existing Ruyi Firmware installation
+
+For later updates, press F9 at boot to enter USB Fastboot. Run these commands
+in the extracted package directory:
+
+  sha256sum -c SHA256SUMS
+  fastboot flash firmware normal-spi.bin
+
+The firmware target preserves UEFI variables, resets CPU selection to
+X100 only and disables driver emulation. It also clears DDR training records
+for retraining on the next normal boot. Platform Settings saves its
+selections persistently, even when the firmware was loaded into RAM.
+
+After flash and verification report OKAY:
+
+  fastboot reboot
 
 For K3 Pico ITX and K3 Deb1 EC flashing, see EC.txt.
