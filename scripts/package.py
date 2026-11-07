@@ -1,28 +1,68 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Collect the selected profile's verified build and installation notes."""
+"""Package verified firmware images and the selected board's documentation."""
+import argparse
 import hashlib
 import json
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-build, output = (Path(p).resolve() for p in sys.argv[1:])
-checks = json.loads((build / 'image-checks.json').read_text())
-output.mkdir(parents=True, exist_ok=True)
-for name in ('normal-spi.bin', 'recovery-bootrom.bin'):
-    if hashlib.sha256((build / name).read_bytes()).hexdigest() != checks['images'][name]['sha256']:
-        raise ValueError(f'{name} changed after verification')
-for name in ('normal-spi.bin', 'recovery-bootrom.bin', 'source-revisions.txt',
-             'submodules.txt', 'toolchain.txt', 'build-options.txt', 'image-checks.json', 'amd-gop.json'):
-    shutil.copy2(build / name, output / name)
-for name in ('README.md', 'INSTALL.txt', 'EC.txt'):
-    shutil.copy2(ROOT / 'docs' / 'k3' / name, output / name)
-(output / 'build-revision.txt').write_text(
-    subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True))
-files = sorted(p for p in output.iterdir() if p.is_file() and p.name != 'SHA256SUMS')
-(output / 'SHA256SUMS').write_text(''.join(
-    hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in files))
-print(output)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('build', type=Path)
+    parser.add_argument('output', type=Path)
+    parser.add_argument('extra', nargs='*', type=Path)
+    args = parser.parse_args()
+    build, output = args.build.resolve(), args.output.resolve()
+    checks = json.loads((build / 'image-checks.json').read_text())
+    board = checks['board']
+    if Path(board).name != board or not (ROOT / 'docs' / board).is_dir():
+        raise ValueError('unknown board documentation')
+    files = {}
+    for name, expected in checks['images'].items():
+        if Path(name).name != name:
+            raise ValueError('invalid image filename')
+        source = build / name
+        data = source.read_bytes()
+        if len(data) != expected['size'] or hashlib.sha256(data).hexdigest() != expected['sha256']:
+            raise ValueError(f'{name} changed after verification')
+        files[name] = source
+    for name in ('image-checks.json', 'source-revisions.txt', 'build-options.txt',
+                 'submodules.txt', 'toolchain.txt', 'amd-gop.json'):
+        files[name] = build / name
+    for source in sorted((ROOT / 'docs' / board).iterdir()):
+        if source.is_file() and source.suffix in ('.md', '.txt'):
+            files[source.name] = source
+    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'tools/settings.py', *args.extra):
+        if source.name in files:
+            raise ValueError('duplicate package filename: ' + source.name)
+        files[source.name] = source
+    output.mkdir(parents=True, exist_ok=True)
+    previous = output / 'image-checks.json'
+    if previous.exists():
+        old = json.loads(previous.read_text())
+        for name in set(old['images']) - set(checks['images']):
+            if Path(name).name != name:
+                raise ValueError('invalid previous image filename')
+            (output / name).unlink(missing_ok=True)
+    for name, source in files.items():
+        shutil.copy2(source, output / name)
+    readme = output / 'README.md'
+    readme.write_text(readme.read_text().replace('../linux-issues.md', 'linux-issues.md'))
+    (output / 'build-revision.txt').write_text(subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True))
+    names = set(files) | {'build-revision.txt'}
+    unexpected = {p.name for p in output.iterdir()} - names - {'SHA256SUMS'}
+    if unexpected:
+        raise ValueError('unexpected package files: ' + ', '.join(sorted(unexpected)))
+    (output / 'SHA256SUMS').write_text(''.join(
+        hashlib.sha256((output / name).read_bytes()).hexdigest() + '  ' + name + '\n'
+        for name in sorted(names)))
+    print(output)
+
+
+if __name__ == '__main__':
+    main()

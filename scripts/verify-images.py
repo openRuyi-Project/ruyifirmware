@@ -1,50 +1,187 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Verify the paired K3 containers before uploading build artifacts."""
+"""Verify firmware containers and embedded payloads for a board build."""
+import argparse
 import hashlib
 import json
+import lzma
 from pathlib import Path
-import runpy
 import struct
 import subprocess
 import sys
-import zlib
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+from k3 import image as k3image
+import settings
+
+# UEFI PI firmware-volume header, coreboot payload segments, and DTB header.
+FV_HEADER = struct.Struct('<16s16sQ4sIHHHBB')
+PAYLOAD_SEGMENT = struct.Struct('>4sIIQII')
+DTB_HEADER = struct.Struct('>10I')
+DTB_MAGIC = 0xd00dfeed
+CBFS_COMPRESS_NONE = 0
+CBFS_COMPRESS_LZMA = 1
 
 
-def verify(build):
-    encoder = runpy.run_path(str(ROOT / 'tools/k3image.py'))
-    normal = build / 'normal-spi.bin'
-    recovery = build / 'recovery-bootrom.bin'
-    image = normal.read_bytes()
-    if image[:80] != encoder['nor_header']():
-        raise ValueError('NOR boot information does not match the supported layout')
-    if encoder['bootrom_payload'](normal) != recovery.read_bytes():
-        raise ValueError('Recovery entry does not match the normal image')
-    config = image[0x20100:0x20120]
-    if zlib.crc32(config[:24]) != struct.unpack_from('<I', config, 24)[0]:
-        raise ValueError('BootROM configuration header CRC mismatch')
-    seen = set()
+def require(condition, reason):
+    if not condition:
+        raise ValueError(reason)
+
+
+def jump_target(data):
+    """Decode the signed displacement of a RISC-V JAL x0 instruction."""
+    insn = struct.unpack_from('<I', data)[0]
+    require(insn & 0xfff == 0x6f, 'missing RISC-V entry jump')
+    relative = ((insn >> 31) << 20 | ((insn >> 12) & 0xff) << 12 |
+                ((insn >> 20) & 1) << 11 | ((insn >> 21) & 0x3ff) << 1)
+    if relative & (1 << 20):
+        relative -= 1 << 21
+    return relative
+
+
+def check_fd(fd, size):
+    require(len(fd) == size and size >= FV_HEADER.size, 'invalid firmware volume size')
+    _, _, length, signature, _, header, _, _, _, _ = FV_HEADER.unpack_from(fd)
+    require(signature == b'_FVH' and length == size, 'invalid firmware volume header')
+    require(FV_HEADER.size <= header <= size and not header % 2, 'invalid FV header length')
+    require(sum(word for (word,) in struct.iter_unpack('<H', fd[:header])) & 0xffff == 0,
+            'invalid FV checksum')
+    require(header <= jump_target(fd) < size, 'entry jump leaves the FV')
+
+
+def check_payload(payload, fd, address):
+    header_size = 2 * PAYLOAD_SEGMENT.size  # CODE followed by ENTR
+    require(len(payload) >= header_size, 'truncated CBFS payload')
+    kind, compression, offset, load, size, memory = PAYLOAD_SEGMENT.unpack_from(payload)
+    entry_kind, entry_compression, entry_offset, entry, entry_size, entry_memory = PAYLOAD_SEGMENT.unpack_from(payload, PAYLOAD_SEGMENT.size)
+    require(kind == b'CODE' and entry_kind == b'ENTR', 'unexpected payload segments')
+    require(load == entry == address and memory == len(fd), 'payload address or memory size mismatch')
+    require((entry_compression, entry_offset, entry_size, entry_memory) == (0, 0, 0, 0), 'invalid entry segment')
+    require(offset == header_size and offset + size == len(payload), 'payload bounds mismatch')
+    data = payload[offset:]
+    if compression == CBFS_COMPRESS_LZMA:
+        data = lzma.decompress(data)
+    else:
+        require(compression == CBFS_COMPRESS_NONE, 'unsupported payload compression')
+    require(data == fd, 'embedded EDK2 differs from the build')
+
+
+def check_k3(image, enabled):
+    require(settings.inspect(image) == {'enabled': enabled}, 'emulation setting mismatch')
+    start = settings.K3_NETWORK_OFFSET
+    require(image[start:start + settings.SECTOR_SIZE] == b'\xff' * settings.SECTOR_SIZE,
+            'network boot must default to disabled')
+
+
+def check_unmatched(rom, enabled):
+    _, areas = settings.read_layout(rom)
+    nvram, cbfs, boot = areas['NVRAM'], areas['COREBOOT'], areas['BOOTBLOCK']
+    require(nvram.flags == settings.FMAP_PRESERVE, 'invalid NVRAM flags')
+    require(settings.region_bytes(rom, nvram) == b'\xff' * nvram.size, 'packaged NVRAM must be erased')
+    require(cbfs.offset + cbfs.size <= nvram.offset, 'CBFS overlaps NVRAM')
+    for slot in range(settings.SLOT_COUNT):
+        offset = areas['PLATFORM_CONFIG'].offset + slot * settings.SECTOR_SIZE
+        record = settings.decode(rom[offset:offset + settings.RECORD.size])
+        require(record == {'enabled': enabled, 'default_enabled': enabled, 'generation': 0}, 'invalid initial settings')
+    # Memory-mapped SPI boot executes the jump at offset zero.
+    start = jump_target(rom)
+    require(struct.calcsize('<I') <= start < boot.size,
+            'SPI entry jump leaves the bootblock region')
+
+
+LAYOUT_CHECKS = {'k3': check_k3, 'unmatched': check_unmatched}
+
+
+def filename(value):
+    if not value or Path(value).name != value or value in ('.', '..'):
+        raise argparse.ArgumentTypeError('expected a filename without a directory')
+    return value
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    parser.add_argument('build', type=Path)
+    for name in ('fd', 'dtb'):
+        parser.add_argument('--' + name, type=filename, required=True)
+    for name in ('dtb-entry', 'compatible'):
+        parser.add_argument('--' + name, required=True)
+    parser.add_argument('--images', nargs='+', type=filename, required=True)
+    parser.add_argument('--rom', nargs=2, action='append', metavar=('IMAGE', 'VARIANT'), required=True)
+    recovery = parser.add_mutually_exclusive_group(required=True)
+    recovery.add_argument('--bootrom', type=filename)
+    recovery.add_argument('--bootblock', type=filename)
+    parser.add_argument('--address', type=lambda s: int(s, 0), required=True)
+    parser.add_argument('--fd-size', type=lambda s: int(s, 0), required=True)
+    args = parser.parse_args()
+    build = args.build.resolve()
+    options = dict(line.split('=', 1) for line in (build / 'build-options.txt').read_text().splitlines())
+    board = options['BOARD']
+    require(board in LAYOUT_CHECKS, 'unsupported firmware layout')
+    require(options['EMULATION_ENABLE'] in ('TRUE', 'FALSE'), 'invalid emulation setting')
+    names = set(args.images)
+    require(len(names) == len(args.images), 'duplicate image filename')
+    roms = dict(args.rom)
+    require(len(roms) == len(args.rom), 'duplicate ROM filename')
+    for name in roms:
+        filename(name)
+    variants = set(roms.values())
+    require(len(variants) == len(roms) and variants <= {'normal', 'recovery'} and
+            'normal' in variants, 'invalid or duplicate ROM variant')
+    if args.bootrom:
+        require(board == 'k3' and variants == {'normal'}, 'unexpected BootROM recovery inputs')
+    if args.bootblock:
+        require(board == 'unmatched' and variants == {'normal', 'recovery'}, 'unexpected JTAG recovery inputs')
+    recovery_file = args.bootrom or args.bootblock
+    require(args.fd != args.dtb and recovery_file not in roms and
+            not ({args.fd, args.dtb} & (set(roms) | {recovery_file})), 'conflicting image roles')
+    require(set(roms) | {recovery_file} <= names, 'missing ROM or recovery image')
+    require(names <= set(roms) | {recovery_file, args.fd, args.dtb}, 'image has no validation rule')
+    checksums = {}
     for line in (build / 'SHA256SUMS').read_text().splitlines():
         digest, name = line.split()
-        if name not in ('normal-spi.bin', 'recovery-bootrom.bin') or name in seen:
-            raise ValueError('Unexpected image in SHA256SUMS')
-        seen.add(name)
-        if hashlib.sha256((build / name).read_bytes()).hexdigest() != digest:
-            raise ValueError(f'{name}: SHA256 mismatch')
-    if seen != {'normal-spi.bin', 'recovery-bootrom.bin'}:
-        raise ValueError('SHA256SUMS must include both images')
-    subprocess.run([str(build / 'coreboot-normal/cbfstool'), str(normal), 'print', '-kv'], check=True)
-    result = {
-        'container_and_pair_checks': 'passed',
-        'hardware_tested': False,
-        'images': {p.name: {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
-                   for p in (normal, recovery)},
-    }
+        require(name in names and name not in checksums, 'unexpected checksum entry')
+        checksums[name] = digest
+    require(set(checksums) == names, 'missing checksum entry')
+    images = {name: (build / name).read_bytes() for name in names}
+    for name, data in images.items():
+        require(hashlib.sha256(data).hexdigest() == checksums[name], name + ': checksum mismatch')
+    fd, dtb = (build / args.fd).read_bytes(), (build / args.dtb).read_bytes()
+    check_fd(fd, args.fd_size)
+    require(len(dtb) >= DTB_HEADER.size, 'truncated DTB header')
+    magic, size, *_ = DTB_HEADER.unpack_from(dtb)
+    require(magic == DTB_MAGIC and size == len(dtb), 'invalid DTB header')
+    compatible = subprocess.check_output(['fdtget', '-t', 's', str(build / args.dtb), '/', 'compatible'], text=True).split()
+    require(args.compatible in compatible, 'device tree board mismatch')
+    enabled = options['EMULATION_ENABLE'] == 'TRUE'
+    for name, variant in roms.items():
+        rom = images[name]
+        detected_board, areas = settings.read_layout(rom)
+        require(detected_board == board, 'ROM layout differs from the build board')
+        LAYOUT_CHECKS[board](rom, enabled)
+        if args.bootrom:
+            require(k3image.bootrom_payload(build / name) == images[args.bootrom],
+                    'BootROM recovery entry differs from the SPI image')
+        if args.bootblock and variant == 'recovery':
+            bootblock = images[args.bootblock]
+            start = jump_target(rom)
+            require(0 < len(bootblock) <= areas['BOOTBLOCK'].size - start,
+                    'recovery bootblock exceeds its reservation')
+            require(rom[start:start + len(bootblock)] == bootblock, 'recovery bootblock differs')
+        tool = str(build / ('coreboot-' + variant) / 'cbfstool')
+        with tempfile.TemporaryDirectory() as temp:
+            temp = Path(temp)
+            subprocess.run([tool, str(build / name), 'extract', '-n', args.dtb_entry, '-f', str(temp / 'dtb')], check=True)
+            subprocess.run([tool, str(build / name), 'extract', '-n', 'fallback/payload', '-U', '-f', str(temp / 'payload')], check=True)
+            require((temp / 'dtb').read_bytes() == dtb, 'embedded device tree differs')
+            check_payload((temp / 'payload').read_bytes(), fd, args.address)
+    result = {'board': board, 'compatible': args.compatible,
+              'images': {name: {'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+                         for name, data in sorted(images.items())}}
     (build / 'image-checks.json').write_text(json.dumps(result, indent=2) + '\n')
-    print('K3 image layout, CRCs, matching recovery entry and SHA256 sums passed')
+    print(board + ': containers, payloads and checksums verified')
 
 
 if __name__ == '__main__':
-    verify(Path(sys.argv[1]).resolve())
+    main()
