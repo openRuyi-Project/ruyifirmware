@@ -1,6 +1,9 @@
 # Ruyi Firmware
 
-UEFI firmware for SpacemiT K3 and SiFive HiFive Unmatched.
+<img align="right" width="180" src="assets/ruyifirmware.svg" alt="Ruyi Firmware logo">
+
+RISC-V firmware with broad OS support and a focus on openRuyi.
+The project uses open-source components wherever possible.
 
 Download a [release package](https://github.com/openRuyi-Project/ruyifirmware/releases),
 then follow the guide for your board:
