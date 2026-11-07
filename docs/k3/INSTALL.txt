@@ -1,8 +1,11 @@
 Ruyi Firmware flashing (SpacemiT K3 Pico ITX)
 
-DEBUG and RELEASE both include UEFI driver emulation, disabled by default.
-Enable it in UEFI Setup -> Platform Settings -> UEFI driver emulation,
-then save and restart to apply.
+The serial console uses EDK2 TTYTERM at 115200 baud, 8 data bits, no parity,
+1 stop bit and no flow control. Use a terminal with xterm-compatible keys.
+
+DEBUG and RELEASE both include UEFI driver emulation, initially enabled.
+In UEFI Setup, open Platform Settings to change UEFI driver emulation.
+Save the setting and restart to apply it.
 The setting persists in SPI even when saved from RAM recovery.
 RX6400 has been tested for UEFI/GRUB display with x64 emulation.
 
@@ -14,6 +17,26 @@ The serial console and native K3 display remain available.
 
 SpacemiT vendor Linux is not supported.
 Linux mainline support is provided on a best-effort basis.
+
+Select the initial emulation setting before flashing
+
+Verify the original package first. To disable emulation in a copy:
+
+  sha256sum -c SHA256SUMS
+  python3 settings.py normal-spi.bin --default-emulation disabled --output-dir noemu
+
+The tool creates noemu/normal-spi.bin and its SHA256SUMS file. It changes
+only the emulation configuration sector. CPU settings, UEFI variables and
+executable firmware bytes stay unchanged. The original recovery-bootrom.bin
+still matches the modified image. Use enabled instead of disabled to
+create an enabled copy in a different output directory.
+
+Use noemu/normal-spi.bin wherever the procedures below use normal-spi.bin.
+The original package checksum does not apply to the modified image.
+To check the copy, run sha256sum -c SHA256SUMS from the noemu directory.
+
+This sets the initial SPI value. Loading Setup defaults on K3 still selects
+Disabled. Saving a menu choice overrides the initial value.
 
 First installation or migration from another firmware
 
@@ -51,14 +74,21 @@ After flash and verification report OKAY:
 
 Updating an existing Ruyi Firmware installation
 
-For later updates, press F9 at boot to enter USB Fastboot. Run these commands
-in the extracted package directory:
+Use this package's updater to apply the image's emulation setting.
+Older updaters clear it instead. If the installed updater supports the new
+behavior, press F9 at boot to enter USB Fastboot.
+
+If you cannot confirm that support, enter BootROM. Run the two stage/continue
+pairs in the first-installation section to load this package into RAM.
+At RAM Recovery - USB Fastboot, run the commands below to preserve UEFI
+variables while applying the image setting:
 
   sha256sum -c SHA256SUMS
   fastboot flash firmware normal-spi.bin
 
-The firmware target preserves UEFI variables, resets CPU selection to
-X100 only and disables driver emulation. It also clears DDR training records
+The firmware target preserves UEFI variables and resets CPU selection to
+X100 only. This version applies the emulation setting from the new image.
+It also clears DDR training records
 for retraining on the next normal boot. Platform Settings saves its
 selections persistently, even when the firmware was loaded into RAM.
 

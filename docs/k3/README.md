@@ -1,89 +1,81 @@
 # SpacemiT K3
 
-Supported board: SpacemiT K3 Pico ITX.
+Ruyi Firmware provides UEFI boot and setup for the SpacemiT K3 Pico ITX.
+It can boot from UFS, NVMe and USB storage.
 
-The boot chain is coreboot → OpenSBI → EDK2. One firmware image supports
-both SPI boot and BootROM USB RAM recovery.
+See [installation instructions](INSTALL.txt) for flashing and USB RAM recovery.
+See [EC updates](EC.txt) for embedded-controller firmware.
 
 ## Build
 
-Build on Ubuntu 26.04:
+On Ubuntu 26.04, run:
 
 ```sh
 git clone --recurse-submodules https://github.com/openRuyi-Project/ruyifirmware.git
 cd ruyifirmware
 sudo bash ci/install-deps.sh
-make package                 # RELEASE
-make package TARGET=DEBUG    # DEBUG
+make BOARD=k3 TARGET=RELEASE package
 ```
 
-Packages are written to `dist/{DEBUG,RELEASE}/`.
-Build files use the same target layout under `build/`.
+Use `TARGET=DEBUG` for more diagnostic output. Packages are written to
+`dist/k3/RELEASE/` or `dist/k3/DEBUG/`. Use `normal-spi.bin` and
+`recovery-bootrom.bin` from the same package.
 
-Use `normal-spi.bin` and `recovery-bootrom.bin` from the same build.
-See [firmware installation](INSTALL.txt) and [EC updates](EC.txt).
+## Setup
 
-## UEFI driver emulation
+Press F2 for Setup, F9 for USB Fastboot or F12 for the boot menu.
+System Information shows the CPU, memory, PCIe devices and storage.
 
-Both DEBUG and RELEASE include x64 and ARM64 emulation. It is disabled
-by default. Enable it in UEFI Setup → Platform Settings → UEFI driver
-emulation, then save and restart. The setting is stored in a
-dedicated SPI sector and remains persistent when saved from RAM recovery.
-Firmware updates reset emulation to disabled.
+The serial console uses TTYTERM at 115200 baud, 8N1, without flow control.
+Use a terminal with xterm-compatible keys.
 
-Onboard option ROMs use x64 by default. AMD GCN display devices in the
-platform PCI ID list use a platform-supplied ARM64 GOP instead:
+## CPU modes
 
-| Device family | GOP selection |
+Open Platform Settings and select a CPU mode:
+
+| Mode | Cores | Vector support | Hypervisor support | CPU name |
+| --- | --- | --- | --- | --- |
+| X100 only (default) | 8 X100 | Enabled | Enabled | `k3` |
+| X100 + A100 | 16 | Disabled | Disabled | `k3-x100-a100` |
+| A100 only | 8 A100 | Enabled | Disabled | `k3-a100` |
+
+Save and restart to apply the selection. The CPU name is available to
+system information tools such as fastfetch.
+
+X100 + A100 mode requires userspace that can run without vector instructions,
+such as RV64GC. Do not use an RVA23U64 root filesystem in this mode.
+Firmware updates restore X100 only.
+
+## Graphics
+
+UEFI driver emulation is enabled by default. Change it in Platform Settings,
+then save and restart. To change the initial setting before flashing, use
+`settings.py` as described in [INSTALL.txt](INSTALL.txt).
+
+| Graphics device | UEFI display driver |
 | --- | --- |
-| Early GCN through Polaris, including Vega M | AMD Pre-SoC15 ARM64 1.68 |
-| Vega 10/12/20, Raven, Renoir, RDNA and other devices | Onboard x64 |
+| Supported early GCN, Polaris and Vega M cards | Included AMD ARM64 GOP 1.68 |
+| Other cards, including RX6400 | Card's x64 UEFI driver |
 
-The GCN replacement path is experimental. The policy preserves card ROM
-data, rejects unselected images before execution and restricts driver
-binding to matching controllers. A failed replacement does not fall
-back to the onboard x64 GOP. RX6400 has been tested with x64 emulation
-for UEFI/GRUB display. RX550 (`1002:67ff`) has been tested with ARM64
-GOP 1.68 for the same firmware display path.
+Support for older AMD cards is experimental. If a card has no firmware
+picture, use the native K3 display output or the serial console.
+Disabling emulation leaves PCIe graphics to the operating system driver.
 
-When emulation is disabled or no selected GOP starts, the discrete GPU
-relies on its OS driver for display. The serial console and native K3
-display remain available.
+The AMD driver is obtained from [AMD](https://www.amd.com/en/resources/support-articles/release-notes/RN-AAR.html).
+For an offline build, put `Arm64Gop_1_68.efi` in a directory and set
+`AMD_GOP_DIR` to that directory.
 
-The build downloads the original `Arm64Gop_1_68.efi` from the
-[AMD RN-AAR page](https://www.amd.com/en/resources/support-articles/release-notes/RN-AAR.html)
-and verifies its fixed SHA-256 hash. `AMD_GOP_DIR=/path/to/files` supplies
-this file for offline builds. It remains AMD software; its source URL
-and hash are included in the package's `amd-gop.json`.
+## Network boot
+
+PXE and HTTP Boot are included in every image and disabled by default.
+Open Platform Settings to enable either method. Save and restart to apply.
+HTTP Boot supports `http://` URLs. HTTPS is not supported.
+Firmware updates load the network boot settings from the new image.
 
 ## Operating systems
 
 SpacemiT vendor Linux is not supported.
 Linux mainline support is provided on a best-effort basis.
 
-## CPU modes
-
-UEFI Setup → Platform Settings → CPU mode selects one of three profiles:
-
-| Mode | Cores | Vector support | Hypervisor support | CPU name |
-| --- | --- | --- | --- | --- |
-| X100 only (default) | 8 X100 | Preserved | Preserved | `k3` |
-| X100 + A100 | 16 | Disabled | Disabled | `k3-x100-a100` |
-| A100 only | 8 A100 | Enabled | Disabled | `k3-a100` |
-
-Save and restart to apply. CPU selection is stored in a dedicated SPI
-sector and remains persistent when changed from RAM recovery. Firmware
-updates restore X100 only while preserving UEFI variables.
-
-X100-only mode retains the original device tree. The other modes are
-generated by firmware without Linux source or binding changes. A100-only
-mode transfers the UEFI boot hart to A100 before handing the CPU
-description to the OS. The CPU names above are exposed through the OS
-device tree for tools such as fastfetch.
-
-Mixed mode needs userspace that can run without V, such as RV64GC.
-An RVA23U64 root filesystem is unsuitable for that mode.
-
-UEFI Setup → System Information displays the active CPU configuration,
-installed memory, PCIe devices and link speeds, and storage capacity and
-identity. Each page can refresh information from devices enumerated by UEFI.
+See [Linux issues](../linux-issues.md) for the firmware framebuffer and PCIe
+resource conflict and its workaround.
