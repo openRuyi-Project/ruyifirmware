@@ -1,0 +1,148 @@
+HiFive Unmatched: JTAG installation and recovery
+================================================
+
+Use one complete DEBUG or RELEASE package. Run the commands below from
+its extracted directory. The firmware boots through coreboot, OpenSBI
+and EDK2.
+
+Connect the board
+-----------------
+
+Connect a data cable from the host to the board's micro-USB Console port.
+The onboard FT2232 provides two interfaces:
+
+  Interface 0 / channel A   JTAG for OpenOCD
+  Interface 1 / channel B   UART for the serial terminal
+
+Power the board from its ATX supply. The USB cable powers only the debug
+interface. Check that the host detects the FT2232:
+
+  lsusb -d 0403:6010
+  ls -l /dev/serial/by-id/
+
+Open the serial device whose name contains if01. Set 115200 baud, 8 data
+bits, no parity, 1 stop bit and no flow control. EDK2 uses TTYTERM with
+xterm-compatible key sequences.
+
+Install OpenOCD with FTDI, RISC-V and fespi support. Use openocd.cfg from
+this package. Run only one OpenOCD process at a time. The serial terminal
+can stay open on interface 1. If USB access is denied, run OpenOCD with
+sudo or configure host USB permissions.
+
+Set the boot switches
+---------------------
+
+Disconnect board power before changing the switches. Set MSEL[3:0] to
+0110 for SPI boot:
+
+  Bit       MSEL3   MSEL2   MSEL1   MSEL0
+  Value     0       1       1       0
+  Switch    OFF     ON      ON      OFF
+
+Use the MSEL labels and the SiFive guide for the board revision to locate
+the switches. Leave RTCSEL and other straps unchanged. Reconnect power.
+JTAG remains available when SPI is empty or contains an invalid image.
+
+Verify the package
+------------------
+
+  sha256sum -c SHA256SUMS
+
+Stop if a checksum fails. Use these files for the operations below:
+
+  normal-spi.bin          Complete 32 MiB image for SPI programming
+  recovery-bootblock.bin  First stage for JTAG RAM recovery
+  recovery-jtag.rom       Firmware image for JTAG RAM recovery
+  openocd.cfg             Board and flash configuration
+  load-ram.tcl            RAM recovery script
+  recovery-addresses.tcl  Build-specific DDR checkpoint
+
+The recovery files must come from the same package. Do not program
+recovery-jtag.rom into SPI.
+
+To install firmware permanently, follow the SPI programming steps.
+To test it in RAM, skip to Load firmware into RAM through JTAG.
+
+Select the initial emulation setting
+------------------------------------
+
+The packaged image enables UEFI driver emulation. To create a copy with
+emulation disabled, run:
+
+  python3 settings.py normal-spi.bin --default-emulation disabled --output-dir noemu
+
+Verify the copy:
+
+  (cd noemu && sha256sum -c SHA256SUMS)
+
+Use noemu/normal-spi.bin in both the write and verify commands below.
+The tool changes only the platform setting in the copy.
+
+After installation, use Platform Settings to change emulation. Save the
+setting and restart. Loading Setup defaults restores the initial setting
+stored in the programmed image.
+
+Program SPI through JTAG
+------------------------
+
+This procedure replaces the complete SPI contents, including platform
+settings and UEFI variables. It resets saved boot entries.
+
+First reset and halt the CPUs, then probe the flash:
+
+  openocd -f openocd.cfg \
+    -c 'init; reset halt; unmatched_spi_probe; mdw 0x1000 1; shutdown'
+
+Check for FU740 TAP ID 0x20000913 and IS25WP256D flash with a size of
+32 MiB. The probe leaves the CPUs halted. The configuration uses L2 LIM
+at 0x08000000 as the flash algorithm's work area and enables four-byte
+memory reads for verification above 16 MiB.
+
+Write and verify the complete image, then restart:
+
+  openocd -f openocd.cfg \
+    -c 'init; reset halt; unmatched_spi_probe' \
+    -c 'flash write_image erase normal-spi.bin 0x20000000 bin' \
+    -c 'verify_image normal-spi.bin 0x20000000 bin; reset run; shutdown'
+
+0x20000000 is the CPU mapping of SPI offset zero. Allow several minutes
+for writing and verification. Keep power connected until verification
+succeeds. If OpenOCD reports an error, stop and resolve it before restarting.
+
+With MSEL[3:0]=0110, the board starts the programmed firmware. Press F2
+for Setup or F12 for the boot menu. RELEASE prints fewer messages than
+DEBUG.
+
+Load firmware into RAM through JTAG
+-----------------------------------
+
+Use this procedure to test firmware without replacing the SPI image:
+
+  openocd -f openocd.cfg \
+    -c 'set unmatched_image_dir .' \
+    -f load-ram.tcl -c shutdown
+
+The script resets the CPUs, loads coreboot into on-chip SRAM and waits
+for DDR initialization. It then loads and verifies recovery-jtag.rom in
+DRAM and starts EDK2. Confirm that the UEFI menu or prompt appears on the
+serial console.
+
+A subsequent reset discards the RAM image and attempts to boot from SPI.
+SPI must contain a valid image for that boot to succeed. RAM recovery
+uses the same persistent platform settings and UEFI variable store.
+Changes saved through Setup therefore persist after a reset.
+
+References
+----------
+
+SiFive HiFive Unmatched Getting Started Guide:
+https://sifive.cdn.prismic.io/sifive/65937c64-c6ca-4bc7-80d1-e830a895636a_hifive-unmatched-getting-started-guide-v1p4.pdf
+
+SiFive HiFive Unmatched Software Reference Manual:
+https://www.sifive.com/document-file/hifive-unmatched-software-reference-manual
+
+SiFive board documentation:
+https://www.sifive.com/documentation
+
+SiFive Freedom E SDK OpenOCD configuration:
+https://github.com/sifive/freedom-e-sdk/blob/master/bsp/sifive-hifive-unmatched/openocd.cfg
