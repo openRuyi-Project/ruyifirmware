@@ -1,4 +1,4 @@
-name: Build Ruyi Firmware (K3)
+name: Build Ruyi Firmware
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -11,36 +11,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        board: [k3, unmatched]
         target: [DEBUG, RELEASE]
     env:
+      BOARD: ${{ matrix.board }}
       TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           submodules: recursive
-
       - name: Install build dependencies
         run: sudo bash ci/install-deps.sh
-
       - name: Build firmware
-        run: make package
-
+        run: make BOARD="$BOARD" TARGET="$TARGET" package
       - name: Archive firmware
+        id: archive
+        shell: bash
         run: |
           version="${GITHUB_SHA:0:12}"
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             version="${GITHUB_REF_NAME//\//-}"
           fi
-          name="ruyifirmware-k3-pico-itx-${version}-${TARGET,,}"
-          mv "dist/$TARGET" "dist/$name"
+          name="ruyifirmware-${BOARD}-${version}-${TARGET,,}"
+          mv "dist/$BOARD/$TARGET" "dist/$name"
           tar -cJf "dist/$name.tar.xz" -C dist "$name"
-
+          printf 'path=%s\n' "dist/$name.tar.xz" >> "$GITHUB_OUTPUT"
       - name: Upload firmware
         uses: actions/upload-artifact@v7
         with:
-          name: ruyifirmware-k3-pico-itx-${{ matrix.target }}
-          path: dist/*.tar.xz
+          name: ruyifirmware-${{ matrix.board }}-${{ matrix.target }}
+          path: ${{ steps.archive.outputs.path }}
           if-no-files-found: error
 
   release:
@@ -50,13 +51,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download firmware
+      - name: Download all firmware packages
         uses: actions/download-artifact@v8
         with:
-          pattern: ruyifirmware-k3-pico-itx-*
+          pattern: ruyifirmware-*
           path: release
           merge-multiple: true
-
       - name: Publish prerelease
         uses: softprops/action-gh-release@v3
         with:
