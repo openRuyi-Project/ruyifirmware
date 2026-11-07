@@ -1,9 +1,9 @@
 # Ruyi Firmware
 
-Firmware builds and release packages for openRuyi, based on coreboot,
-OpenSBI and EDK2. Component revisions are pinned as Git submodules.
+UEFI firmware for SpacemiT K3 and SiFive HiFive Unmatched.
 
-Platform documentation contains build instructions, firmware variants,
-supported hardware and installation procedures:
+Download a [release package](https://github.com/openRuyi-Project/ruyifirmware/releases),
+then follow the guide for your board:
 
 - [SpacemiT K3](docs/k3/README.md)
+- [SiFive HiFive Unmatched](docs/unmatched/README.md)
