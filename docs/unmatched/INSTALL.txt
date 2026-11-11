@@ -93,7 +93,7 @@ image. Saved boot entries are preserved.
 First reset and halt the CPUs, then probe the flash:
 
   openocd -f openocd.cfg \
-    -c 'init; reset halt; unmatched_spi_probe; mdw 0x1000 1; shutdown'
+    -c 'init; reset halt; fu740_spi_probe; mdw 0x1000 1; shutdown'
 
 Check for FU740 TAP ID 0x20000913 and IS25WP256D flash with a size of
 32 MiB. The probe leaves the CPUs halted. The configuration uses L2 LIM
@@ -103,7 +103,7 @@ memory reads. The firmware image uses only the first 8 MiB.
 Write and verify the complete image, then restart:
 
   openocd -f openocd.cfg \
-    -c 'init; reset halt; unmatched_spi_probe' \
+    -c 'init; reset halt; fu740_spi_probe' \
     -c 'flash write_image erase normal-spi.bin 0x20000000 bin' \
     -c 'verify_image normal-spi.bin 0x20000000 bin; reset run; shutdown'
 
@@ -121,7 +121,7 @@ Load firmware into RAM through JTAG
 Use this procedure to test firmware without replacing the SPI image:
 
   openocd -f openocd.cfg \
-    -c 'set unmatched_image_dir .' \
+    -c 'set fu740_image_dir .' \
     -f load-ram.tcl -c shutdown
 
 The script resets the CPUs, loads coreboot into on-chip SRAM and waits
