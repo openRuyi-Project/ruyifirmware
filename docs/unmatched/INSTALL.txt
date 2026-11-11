@@ -24,8 +24,9 @@ Open the serial device whose name contains if01. Set 115200 baud, 8 data
 bits, no parity, 1 stop bit and no flow control. EDK2 uses TTYTERM with
 xterm-compatible key sequences.
 
-Install OpenOCD with FTDI, RISC-V and fespi support. Use openocd.cfg from
-this package. Run only one OpenOCD process at a time. The serial terminal
+Use an OpenOCD build with FTDI, RISC-V, fespi and riscv smp support.
+The OpenOCD 0.12.0 release lacks riscv smp. Use openocd.cfg from this
+package. Run only one OpenOCD process at a time. The serial terminal
 can stay open on interface 1. If USB access is denied, run OpenOCD with
 sudo or configure host USB permissions.
 
@@ -54,7 +55,9 @@ Stop if a checksum fails. Use these files for the operations below:
   recovery-bootblock.bin  First stage for JTAG RAM recovery
   recovery-jtag.rom       Firmware image for JTAG RAM recovery
   openocd.cfg             Board and flash configuration
+  prepare-ddr.tcl         Shared DDR initialization
   load-ram.tcl            RAM recovery script
+  flash-spi.tcl           SPI programming script
   recovery-addresses.tcl  Build-specific DDR checkpoint
 
 The recovery files must come from the same package. Do not program
@@ -90,26 +93,20 @@ This procedure replaces the first 8 MiB of SPI, including platform
 settings. UEFI variables remain at their existing location outside the
 image. Saved boot entries are preserved.
 
-First reset and halt the CPUs, then probe the flash:
+Program the image from the extracted package directory:
 
-  openocd -f openocd.cfg \
-    -c 'init; reset halt; fu740_spi_probe; mdw 0x1000 1; shutdown'
+  openocd -f openocd.cfg -c 'set fu740_image_dir [pwd]' \
+    -f flash-spi.tcl -c shutdown
 
-Check for FU740 TAP ID 0x20000913 and IS25WP256D flash with a size of
-32 MiB. The probe leaves the CPUs halted. The configuration uses L2 LIM
-at 0x08000000 as the flash algorithm's work area and enables four-byte
-memory reads. The firmware image uses only the first 8 MiB.
+The script loads the recovery bootblock and waits for DDR initialization.
+It programs the first 8 MiB of SPI from a DRAM work area on hart 1.
+It verifies the image before restarting the board. The flash is an
+IS25WP256D with a size of 32 MiB. UEFI variables outside the image remain
+unchanged.
 
-Write and verify the complete image, then restart:
-
-  openocd -f openocd.cfg \
-    -c 'init; reset halt; fu740_spi_probe' \
-    -c 'flash write_image erase normal-spi.bin 0x20000000 bin' \
-    -c 'verify_image normal-spi.bin 0x20000000 bin; reset run; shutdown'
-
-0x20000000 is the CPU mapping of SPI offset zero. Allow several minutes
-for writing and verification. Keep power connected until verification
-succeeds. If OpenOCD reports an error, stop and resolve it before restarting.
+Wait for Complete SPI image verified. Keep power connected until the
+script finishes. If OpenOCD reports an error, rerun this procedure before
+restarting. The procedure also works when the installed image is damaged.
 
 With MSEL[3:0]=0110, the board starts the programmed firmware. Press F2
 for Setup or F12 for the boot menu. RELEASE prints fewer messages than

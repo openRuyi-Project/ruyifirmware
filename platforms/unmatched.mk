@@ -19,4 +19,4 @@ CBFS_REPLACE_DTB := TRUE
 ROM_PACKER :=
 RECOVERY_METHOD := jtag
 FIRMWARE_IRQ_NODES :=
-PACKAGE_EXTRA := "$(ROOT)/platforms/unmatched/openocd.cfg" "$(ROOT)/tools/fu740/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl"
+PACKAGE_EXTRA := "$(ROOT)/platforms/unmatched/openocd.cfg" "$(ROOT)/tools/fu740/prepare-ddr.tcl" "$(ROOT)/tools/fu740/load-ram.tcl" "$(ROOT)/tools/fu740/flash-spi.tcl" "$(BUILD)/recovery-addresses.tcl"
