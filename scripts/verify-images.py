@@ -77,10 +77,9 @@ def check_k3(image, enabled):
 
 def check_unmatched(rom, enabled):
     _, areas = settings.read_layout(rom)
-    nvram, cbfs, boot = areas['NVRAM'], areas['COREBOOT'], areas['BOOTBLOCK']
-    require(nvram.flags == settings.FMAP_PRESERVE, 'invalid NVRAM flags')
-    require(settings.region_bytes(rom, nvram) == b'\xff' * nvram.size, 'packaged NVRAM must be erased')
-    require(cbfs.offset + cbfs.size <= nvram.offset, 'CBFS overlaps NVRAM')
+    cbfs, boot = areas['COREBOOT'], areas['BOOTBLOCK']
+    require(areas['PLATFORM_CONFIG'].flags == settings.FMAP_PRESERVE, 'invalid platform settings flags')
+    require(cbfs.offset + cbfs.size == len(rom), 'CBFS does not end at the image boundary')
     for slot in range(settings.SLOT_COUNT):
         offset = areas['PLATFORM_CONFIG'].offset + slot * settings.SECTOR_SIZE
         record = settings.decode(rom[offset:offset + settings.RECORD.size])

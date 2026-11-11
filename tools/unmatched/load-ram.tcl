@@ -3,7 +3,7 @@
 set unmatched_lim_base 0x08000000
 set unmatched_bootblock_limit 0x10000
 set unmatched_rom_base 0x90000000
-set unmatched_rom_size 0x2000000
+set unmatched_rom_size 0x800000
 # OpenOCD scratch space stays outside the bootblock and loaded ROM.
 set unmatched_lim_work_area 0x08060000
 set unmatched_dram_work_area 0x8e000000

@@ -50,7 +50,7 @@ Verify the package
 
 Stop if a checksum fails. Use these files for the operations below:
 
-  normal-spi.bin          Complete 32 MiB image for SPI programming
+  normal-spi.bin          8 MiB firmware image for SPI programming
   recovery-bootblock.bin  First stage for JTAG RAM recovery
   recovery-jtag.rom       Firmware image for JTAG RAM recovery
   openocd.cfg             Board and flash configuration
@@ -85,8 +85,9 @@ stored in the programmed image.
 Program SPI through JTAG
 ------------------------
 
-This procedure replaces the complete SPI contents, including platform
-settings and UEFI variables. It resets saved boot entries.
+This procedure replaces the first 8 MiB of SPI, including platform
+settings. UEFI variables remain at their existing location outside the
+image. Saved boot entries are preserved.
 
 First reset and halt the CPUs, then probe the flash:
 
@@ -96,7 +97,7 @@ First reset and halt the CPUs, then probe the flash:
 Check for FU740 TAP ID 0x20000913 and IS25WP256D flash with a size of
 32 MiB. The probe leaves the CPUs halted. The configuration uses L2 LIM
 at 0x08000000 as the flash algorithm's work area and enables four-byte
-memory reads for verification above 16 MiB.
+memory reads. The firmware image uses only the first 8 MiB.
 
 Write and verify the complete image, then restart:
 

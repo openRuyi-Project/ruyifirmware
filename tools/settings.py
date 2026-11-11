@@ -39,7 +39,7 @@ FlashArea = namedtuple('FlashArea', 'offset size flags')
 # Accepted layouts from the coreboot board FMDs. Check these before writing
 # settings, whose addresses are part of the firmware ABI, not relocatable data.
 LAYOUTS = {
-    0x800000: ('k3', {
+    'k3': (0x800000, {
         'BOOTINFO': (0x0, 0x20000),
         'BOOTBLOCK': (0x20000, 0x80000),
         'FMAP': (0x1b0000, 0x1000),
@@ -47,12 +47,11 @@ LAYOUTS = {
         'COREBOOT': (0x210000, 0x300000),
         'UEFI_VARIABLES': (0x700000, 0xc0000),
     }),
-    0x2000000: ('unmatched', {
+    'unmatched': (0x800000, {
         'BOOTBLOCK': (0x0, 0x10000),
         'FMAP': (0x20000, 0x200),
         'PLATFORM_CONFIG': (UNMATCHED_OFFSET, 0x10000),
-        'COREBOOT': (0x20200, 0x1edfe00),
-        'NVRAM': (0x1f00000, 0x90000),
+        'COREBOOT': (0x20200, 0x7dfe00),
     }),
 }
 
@@ -84,9 +83,12 @@ def decode(data):
 
 
 def read_layout(image):
-    if len(image) not in LAYOUTS:
-        raise ValueError('expected an 8 MiB K3 or 32 MiB Unmatched image')
-    board, required = LAYOUTS[len(image)]
+    candidates = [(board, required) for board, (size, required) in LAYOUTS.items()
+                  if len(image) == size and
+                  image[required['FMAP'][0]:required['FMAP'][0] + 8] == b'__FMAP__']
+    if len(candidates) != 1:
+        raise ValueError('expected an unambiguous 8 MiB K3 or Unmatched image')
+    board, required = candidates[0]
     fmap, fmap_size = required['FMAP']
     signature, major, minor, base, size, name, count = FMAP_HEADER.unpack_from(image, fmap)
     if (signature, major, minor, base, size, name.rstrip(b'\0')) != (b'__FMAP__', 1, 1, 0, len(image), b'FLASH'):
