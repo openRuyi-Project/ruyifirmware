@@ -19,4 +19,4 @@ CBFS_REPLACE_DTB := TRUE
 ROM_PACKER :=
 RECOVERY_METHOD := jtag
 FIRMWARE_IRQ_NODES :=
-PACKAGE_EXTRA := "$(ROOT)/tools/unmatched/openocd.cfg" "$(ROOT)/tools/unmatched/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl"
+PACKAGE_EXTRA := "$(ROOT)/tools/settings.py" "$(ROOT)/tools/unmatched/openocd.cfg" "$(ROOT)/tools/unmatched/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl"

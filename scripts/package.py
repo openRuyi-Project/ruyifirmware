@@ -37,7 +37,7 @@ def main():
     for source in sorted((ROOT / 'docs' / board).iterdir()):
         if source.is_file() and source.suffix in ('.md', '.txt'):
             files[source.name] = source
-    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'tools/settings.py', *args.extra):
+    for source in (ROOT / 'docs/linux-issues.md', *args.extra):
         if source.name in files:
             raise ValueError('duplicate package filename: ' + source.name)
         files[source.name] = source

@@ -20,4 +20,4 @@ ROM_PACKER := tools/k3/image.py
 RECOVERY_METHOD := bootrom
 # OpenSBI initializes these M-mode AIA nodes, then disables them for S-mode.
 FIRMWARE_IRQ_NODES := /soc/interrupt-controller@f1000000 /soc/interrupt-controller@f1800000
-PACKAGE_EXTRA :=
+PACKAGE_EXTRA := "$(ROOT)/tools/settings.py"

@@ -28,7 +28,7 @@ prepare:
 multiarch:
 	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
 	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE \
-	  MAU_SUPPORTS_AARCH64_BINS=YES CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
+	  MAU_SUPPORTS_AARCH64_BINS=YES MAU_RISCV_ISA="$(RISCV_ISA)" CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
 
 edk2-normal: multiarch
 	mkdir -p "$(EDK_WORK)/Conf" "$(EDK_WORK)/X64EmulatorBin"
@@ -49,7 +49,8 @@ edk2-normal: multiarch
 
 opensbi-normal:
 	$(MAKE) -C "$(SOURCES)/opensbi" O="$(BUILD)/opensbi" PLATFORM=generic \
-	  CROSS_COMPILE="$(CROSS_COMPILE)" FW_TEXT_START=$(SBI_ADDRESS) FW_OPTIONS=$(SBI_FW_OPTIONS) -j$(JOBS)
+	  CROSS_COMPILE="$(CROSS_COMPILE)" PLATFORM_RISCV_ISA="$(RISCV_ISA)" \
+	  FW_TEXT_START=$(SBI_ADDRESS) FW_OPTIONS=$(SBI_FW_OPTIONS) -j$(JOBS)
 
 $(COREBOOT_TARGETS): coreboot-%: opensbi-normal
 	mkdir -p "$(BUILD)"
@@ -59,10 +60,10 @@ $(COREBOOT_TARGETS): coreboot-%: opensbi-normal
 	if [[ "$*" == recovery ]]; then
 	  printf '%s\n' '$(COREBOOT_RECOVERY_OPTION)' >> "$(BUILD)/coreboot-$*.config"
 	fi
-	$(MAKE) -C "$(SOURCES)/coreboot" obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" \
-	  UPDATED_SUBMODULES=1 CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" olddefconfig
-	$(MAKE) -C "$(SOURCES)/coreboot" obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" \
-	  UPDATED_SUBMODULES=1 CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" -j$(JOBS)
+	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
+	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 olddefconfig
+	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
+	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 -j$(JOBS)
 
 dtb:
 	mkdir -p "$(BUILD)"
@@ -88,8 +89,10 @@ define assemble_rom
 	else
 	  cp "$(BUILD)/$(1).rom" "$(BUILD)/$(2)"
 	fi
-	$(PYTHON) "$(ROOT)/tools/settings.py" "$(BUILD)/$(2)" \
-	  --default-emulation $(if $(filter TRUE,$(EMULATION_ENABLE)),enabled,disabled) --output "$(BUILD)/$(2)"
+	if [[ -n "$(SETTINGS_TOOL)" ]]; then
+	  $(PYTHON) "$(ROOT)/$(SETTINGS_TOOL)" "$(BUILD)/$(2)" \
+	    --default-emulation $(if $(filter TRUE,$(EMULATION_ENABLE)),enabled,disabled) --output "$(BUILD)/$(2)"
+	fi
 endef
 
 normal: edk2-normal dtb coreboot-normal
@@ -117,6 +120,8 @@ source-info:
 	$(CROSS_COMPILE)gcc --version > "$(BUILD)/toolchain.txt"
 	printf 'BOARD=%s\nTARGET=%s\nX64EMU_ENABLE=TRUE\nEMULATION_ENABLE=%s\nMAU_SUPPORTS_AARCH64_BINS=YES\nCOREBOOT_LOGLEVEL=%s\nOPENSBI_FW_OPTIONS=%s\nEDK2_DEBUG_PRINT_ERROR_LEVEL=%s\nPXE_BOOT_INCLUDED=TRUE\nHTTP_BOOT_INCLUDED=TRUE\n' \
 	  "$(BOARD)" "$(TARGET)" "$(EMULATION_ENABLE)" "$(COREBOOT_LOGLEVEL)" "$(SBI_FW_OPTIONS)" "$(DEBUG_PRINT_ERROR_LEVEL)" > "$(BUILD)/build-options.txt"
+	printf 'OPENSBI_RISCV_ISA=%s\nEMULATOR_RISCV_ISA=%s\n' "$(RISCV_ISA)" "$(RISCV_ISA)" >> "$(BUILD)/build-options.txt"
+	sed -n 's/^CONFIG_RISCV_ARCH=/COREBOOT_RISCV_ISA=/p' "$(BUILD)/coreboot-normal.config" >> "$(BUILD)/build-options.txt"
 
 verify: all
 	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)" --images $(IMAGE_FILES) $(VERIFY_INPUTS) \
