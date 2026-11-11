@@ -12,11 +12,14 @@ VERIFY_INPUTS += --rom recovery-jtag.rom recovery --bootblock recovery-bootblock
 else ifeq ($(RECOVERY_METHOD),bootrom)
 IMAGE_FILES += recovery-bootrom.bin
 VERIFY_INPUTS += --bootrom recovery-bootrom.bin
+else ifeq ($(RECOVERY_METHOD),uart-jtag)
+IMAGE_FILES += recovery-jtag.rom recovery-ddr.ihex
+VERIFY_INPUTS += --rom recovery-jtag.rom recovery --uart recovery-ddr.ihex
 else
 $(error Unsupported RECOVERY_METHOD=$(RECOVERY_METHOD))
 endif
 
-.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) multiarch source-info prepare verify package help
+.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) multiarch source-info prepare prepare-inputs verify package help
 all: normal recovery source-info
 	cd "$(BUILD)"
 	sha256sum $(IMAGE_FILES) > SHA256SUMS
@@ -24,6 +27,11 @@ all: normal recovery source-info
 prepare:
 	git -C "$(ROOT)" submodule sync --recursive
 	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
+
+prepare-inputs:
+	if [[ -n "$(INPUT_PREPARER)" ]]; then
+	  $(PYTHON) "$(ROOT)/$(INPUT_PREPARER)" "$(SOURCES)" "$(BUILD)" $(INPUT_PREPARER_ARGS)
+	fi
 
 multiarch:
 	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
@@ -85,7 +93,7 @@ define assemble_rom
 	  -f "$(EDK_FD)" -l $(PAYLOAD_ADDRESS) -e $(PAYLOAD_ADDRESS) -c lzma
 	if [[ -n "$(ROM_PACKER)" ]]; then
 	  $(PYTHON) "$(ROOT)/$(ROM_PACKER)" nor --rom "$(BUILD)/$(1).rom" \
-	    --bootblock "$(BUILD)/coreboot-$(1)/cbfs/fallback/bootblock.bin" --output "$(BUILD)/$(2)"
+	    $(ROM_PACK_ARGS) --output "$(BUILD)/$(2)"
 	else
 	  cp "$(BUILD)/$(1).rom" "$(BUILD)/$(2)"
 	fi
@@ -95,7 +103,7 @@ define assemble_rom
 	fi
 endef
 
-normal: edk2-normal dtb coreboot-normal
+normal: prepare-inputs edk2-normal dtb coreboot-normal
 	$(call assemble_rom,normal,normal-spi.bin)
 
 ifeq ($(RECOVERY_METHOD),jtag)
@@ -104,9 +112,13 @@ recovery: edk2-normal dtb coreboot-recovery
 	cp "$(BUILD)/coreboot-recovery/cbfs/fallback/bootblock.raw.bin" "$(BUILD)/recovery-bootblock.bin"
 	$(COREBOOT_CROSS_COMPILE)nm "$(BUILD)/coreboot-recovery/cbfs/fallback/bootblock.debug" | \
 	  awk '$$3 == "$(JTAG_DDR_SYMBOL)" { print "set $(JTAG_DDR_VARIABLE) 0x" $$1 }' > "$(BUILD)/recovery-addresses.tcl"
-else
+else ifeq ($(RECOVERY_METHOD),bootrom)
 recovery: normal
 	$(PYTHON) "$(ROOT)/$(ROM_PACKER)" ram --rom "$(BUILD)/normal-spi.bin" --output "$(BUILD)/recovery-bootrom.bin"
+else
+recovery: normal
+	cp "$(BUILD)/normal.rom" "$(BUILD)/recovery-jtag.rom"
+	$(PYTHON) "$(ROOT)/$(ROM_PACKER)" uart $(ROM_RECOVERY_PACK_ARGS) --output "$(BUILD)/recovery-ddr.ihex"
 endif
 
 source-info:
@@ -126,7 +138,8 @@ source-info:
 verify: all
 	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)" --images $(IMAGE_FILES) $(VERIFY_INPUTS) \
 	  --fd "$(FD_FILE)" --fd-size $(FD_SIZE) --dtb "$(DTB_FILE)" --dtb-entry "$(CBFS_DTB_NAME)" \
-	  --compatible "$(DTB_COMPATIBLE)" --address $(PAYLOAD_ADDRESS)
+	  --compatible "$(DTB_COMPATIBLE)" --address $(PAYLOAD_ADDRESS) \
+	  --cbfstool "$(BUILD)/coreboot-normal/cbfstool"
 
 package: verify
 	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(DIST)" $(PACKAGE_EXTRA)

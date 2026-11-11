@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
     ca-certificates git build-essential gcc-riscv64-linux-gnu \
-    binutils-riscv64-linux-gnu bc bison flex pkg-config \
+    binutils-riscv64-linux-gnu bc bison flex pkg-config cmake \
     gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
     libssl-dev libelf-dev libfdt-dev zlib1g-dev uuid-dev \
     device-tree-compiler acpica-tools nasm xz-utils \

@@ -6,6 +6,7 @@ import hashlib
 import json
 import lzma
 from pathlib import Path
+import re
 import struct
 import subprocess
 import sys
@@ -14,6 +15,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from k3 import image as k3image
+from eic7700 import image as eic7700image
 import settings
 
 # UEFI PI firmware-volume header, coreboot payload segments, and DTB header.
@@ -111,13 +113,15 @@ def main():
     recovery = parser.add_mutually_exclusive_group(required=True)
     recovery.add_argument('--bootrom', type=filename)
     recovery.add_argument('--bootblock', type=filename)
+    recovery.add_argument('--uart', type=filename)
+    parser.add_argument('--cbfstool', type=Path, required=True)
     parser.add_argument('--address', type=lambda s: int(s, 0), required=True)
     parser.add_argument('--fd-size', type=lambda s: int(s, 0), required=True)
     args = parser.parse_args()
     build = args.build.resolve()
     options = dict(line.split('=', 1) for line in (build / 'build-options.txt').read_text().splitlines())
     board = options['BOARD']
-    require(board in LAYOUT_CHECKS, 'unsupported firmware layout')
+    require(board in set(LAYOUT_CHECKS) | {'p550'}, 'unsupported firmware layout')
     require(options['EMULATION_ENABLE'] in ('TRUE', 'FALSE'), 'invalid emulation setting')
     names = set(args.images)
     require(len(names) == len(args.images), 'duplicate image filename')
@@ -132,7 +136,9 @@ def main():
         require(board == 'k3' and variants == {'normal'}, 'unexpected BootROM recovery inputs')
     if args.bootblock:
         require(board == 'unmatched' and variants == {'normal', 'recovery'}, 'unexpected JTAG recovery inputs')
-    recovery_file = args.bootrom or args.bootblock
+    if args.uart:
+        require(board == 'p550' and variants == {'normal', 'recovery'}, 'unexpected UART recovery inputs')
+    recovery_file = args.bootrom or args.bootblock or args.uart
     require(args.fd != args.dtb and recovery_file not in roms and
             not ({args.fd, args.dtb} & (set(roms) | {recovery_file})), 'conflicting image roles')
     require(set(roms) | {recovery_file} <= names, 'missing ROM or recovery image')
@@ -154,11 +160,49 @@ def main():
     compatible = subprocess.check_output(['fdtget', '-t', 's', str(build / args.dtb), '/', 'compatible'], text=True).split()
     require(args.compatible in compatible, 'device tree board mismatch')
     enabled = options['EMULATION_ENABLE'] == 'TRUE'
+    p550_roms = {}
+    uart_stages = eic7700image.check_uart(images[args.uart]) if args.uart else None
+    if board == 'p550':
+        # This platform uses a compiled default and an EFI variable at runtime.
+        generated = list(build.glob('edk2/Build/*/*/RISCV64/RuyiPlatformPkg/Drivers/'
+                                    'VariableEmulationConfigDxe/VariableEmulationConfigDxe/DEBUG/AutoGen.h'))
+        require(len(generated) == 1, 'missing or ambiguous emulation policy build metadata')
+        default = re.search(r'^#define\s+_PCD_VALUE_PcdDefaultDriverEmulation\s+(\S+)',
+                            generated[0].read_text(), re.MULTILINE)
+        require(default is not None and default[1] in ('0U', '1U', '0', '1'),
+                'invalid compiled emulation default')
+        require(default[1].rstrip('U') == str(int(enabled)), 'compiled emulation default mismatch')
     for name, variant in roms.items():
         rom = images[name]
-        detected_board, areas = settings.read_layout(rom)
-        require(detected_board == board, 'ROM layout differs from the build board')
-        LAYOUT_CHECKS[board](rom, enabled)
+        if board == 'p550':
+            if variant == 'normal':
+                require(len(rom) == eic7700image.IMAGE_BYTES, 'invalid P550 SPI size')
+                stages = eic7700image.entries(rom)
+                require(rom[eic7700image.FIRMWARE_BYTES:] ==
+                        b'\xff' * (len(rom) - eic7700image.FIRMWARE_BYTES),
+                        'packaged P550 variable storage must be erased')
+                for index in range(2):
+                    offset, size, *_ = stages[index]
+                    start = offset + eic7700image.SIGNATURE_BYTES
+                    payload = rom[start:start + size]
+                    if index == 0:
+                        require(payload == uart_stages[index] == (build / 'sys-init.bin').read_bytes(),
+                                'SPI and UART system initialization differ')
+                    else:
+                        normal_ddr, ecc_ddr = eic7700image.ddr_payloads(payload)
+                        require(normal_ddr == uart_stages[index] == (build / 'ddr-normal.bin').read_bytes(),
+                                'normal DDR payload differs from UART recovery or source')
+                        require(ecc_ddr == (build / 'ddr-ecc.bin').read_bytes(),
+                                'ECC DDR payload differs from source')
+                offset, size, *_ = stages[2]
+                start = offset + eic7700image.SIGNATURE_BYTES
+                rom = rom[start:start + size]
+            require(len(rom) == eic7700image.COREBOOT_BYTES, 'invalid P550 RAM firmware size')
+            p550_roms[variant] = rom
+        else:
+            detected_board, areas = settings.read_layout(rom)
+            require(detected_board == board, 'ROM layout differs from the build board')
+            LAYOUT_CHECKS[board](rom, enabled)
         if args.bootrom:
             require(k3image.bootrom_payload(build / name) == images[args.bootrom],
                     'BootROM recovery entry differs from the SPI image')
@@ -168,13 +212,16 @@ def main():
             require(0 < len(bootblock) <= areas['BOOTBLOCK'].size - start,
                     'recovery bootblock exceeds its reservation')
             require(rom[start:start + len(bootblock)] == bootblock, 'recovery bootblock differs')
-        tool = str(build / ('coreboot-' + variant) / 'cbfstool')
+        tool = str(args.cbfstool.resolve())
         with tempfile.TemporaryDirectory() as temp:
             temp = Path(temp)
-            subprocess.run([tool, str(build / name), 'extract', '-n', args.dtb_entry, '-f', str(temp / 'dtb')], check=True)
-            subprocess.run([tool, str(build / name), 'extract', '-n', 'fallback/payload', '-U', '-f', str(temp / 'payload')], check=True)
+            (temp / 'rom').write_bytes(rom)
+            subprocess.run([tool, str(temp / 'rom'), 'extract', '-n', args.dtb_entry, '-f', str(temp / 'dtb')], check=True)
+            subprocess.run([tool, str(temp / 'rom'), 'extract', '-n', 'fallback/payload', '-U', '-f', str(temp / 'payload')], check=True)
             require((temp / 'dtb').read_bytes() == dtb, 'embedded device tree differs')
             check_payload((temp / 'payload').read_bytes(), fd, args.address)
+    if p550_roms:
+        require(p550_roms['normal'] == p550_roms['recovery'], 'SPI and JTAG firmware differ')
     result = {'board': board, 'compatible': args.compatible,
               'images': {name: {'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
                          for name, data in sorted(images.items())}}

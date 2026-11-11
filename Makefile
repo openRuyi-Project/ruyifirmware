@@ -16,6 +16,7 @@ JOBS ?= 2
 PYTHON ?= python3
 CROSS_COMPILE ?= riscv64-linux-gnu-
 RISCV_ISA := rv64gc
+INPUT_PREPARER :=
 SETTINGS_TOOL := tools/settings.py
 EMULATION_ENABLE ?= TRUE
 ifneq ($(EMULATION_ENABLE),TRUE)

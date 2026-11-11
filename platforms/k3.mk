@@ -17,6 +17,7 @@ DTB_COMPATIBLE := spacemit,k3-pico-itx
 CBFS_DTB_NAME := k3-pico-itx.dtb
 CBFS_REPLACE_DTB := FALSE
 ROM_PACKER := tools/k3/image.py
+ROM_PACK_ARGS = --bootblock "$(BUILD)/coreboot-$(1)/cbfs/fallback/bootblock.bin"
 RECOVERY_METHOD := bootrom
 # OpenSBI initializes these M-mode AIA nodes, then disables them for S-mode.
 FIRMWARE_IRQ_NODES := /soc/interrupt-controller@f1000000 /soc/interrupt-controller@f1800000
