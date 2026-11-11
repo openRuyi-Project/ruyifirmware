@@ -1,0 +1,84 @@
+HiFive Premier P550: installation and recovery
+==============================================
+
+Use one complete DEBUG or RELEASE package. Run host commands from its
+extracted directory. Check its files with sha256sum -c SHA256SUMS.
+
+Update SPI firmware
+-------------------
+
+Copy normal-spi.bin and SHA256SUMS to the same directory on a FAT
+partition on an SD card or USB drive.
+Start the board, press F2, and select Firmware Update. Select the file
+and confirm the update. Wait for verification to finish before restarting.
+The updater preserves UEFI variables.
+
+USB Fastboot also supports SPI updates. Enter USB Fastboot from Boot
+Manager before connecting the dual-role USB-A port to the host. Check
+the target before writing:
+
+  fastboot getvar product
+
+The product must be SiFive HiFive Premier P550. If more than one Fastboot
+device is connected, use fastboot -s SERIAL for both commands.
+After confirming the target, write the image:
+
+  fastboot flash spi normal-spi.bin
+
+Wait for the write and verification to complete. Disconnect the download
+cable, press Esc to leave Fastboot, then reset the board.
+
+Recover through UART and JTAG
+----------------------------
+
+Connect the FT4232 USB debug interface to the host. It provides:
+
+  Channel A / interface 0   EIC7700 JTAG
+  Channel B / interface 1   MCU JTAG
+  Channel C / interface 2   EIC7700 console
+  Channel D / interface 3   MCU command console
+
+Use 115200 baud, 8N1, with no flow control for both consoles.
+Use stable /dev/serial/by-path names when multiple boards are connected.
+Install an OpenOCD build with FTDI, RISC-V and riscv exec_progbuf support.
+Install ascii-xfr from minicom.
+The OpenOCD 0.12.0 release does not support this loader.
+
+On the MCU command console, select ROM UART recovery and cycle SoC power:
+
+  bootsel-s sw 0
+  sompower-s 0
+  sompower-g
+
+Wait for sompower-g to report OFF. Then power on the SoC:
+
+  sompower-s 1
+
+Close the EIC7700 serial terminal before sending the recovery file.
+Set SOC_UART to the channel C device on your host:
+
+  SOC_UART=/dev/serial/by-path/your-channel-C-device
+  stty -F "$SOC_UART" 115200 raw -echo ixon -ixoff -crtscts
+  ascii-xfr -dsv recovery-ddr.ihex <"$SOC_UART" >"$SOC_UART"
+  stty -F "$SOC_UART" 115200 raw -echo -ixon -ixoff -crtscts
+
+The recovery image initializes DDR. The four main harts then wait for
+JTAG. Reopen the EIC7700 console and run:
+
+  openocd -f openocd.cfg -c 'set eic7700_image_dir [pwd]' \
+    -f load-ram.tcl -c shutdown
+
+The loader checks the recovery state, loads recovery-jtag.rom into RAM,
+and verifies it before starting coreboot. It does not write SPI.
+Use only one OpenOCD process for this adapter. Do not use ndmreset after
+DDR initialization.
+
+When Setup appears, restore hardware boot selection on the MCU command
+console:
+
+  bootsel-s hw 2
+  bootsel-g
+
+With the SoC powered, confirm that the selector reports 0010 for SPI.
+Then select Firmware Update in Setup and write normal-spi.bin.
+Wait for verification to finish before restarting.

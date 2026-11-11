@@ -10,3 +10,4 @@ then follow the guide for your board:
 
 - [SpacemiT K3](docs/k3/README.md)
 - [SiFive HiFive Unmatched](docs/unmatched/README.md)
+- [SiFive HiFive Premier P550](docs/p550/README.md)
