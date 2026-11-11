@@ -37,7 +37,7 @@ def main():
     for source in sorted((ROOT / 'docs' / board).iterdir()):
         if source.is_file() and source.suffix in ('.md', '.txt'):
             files[source.name] = source
-    for source in (ROOT / 'docs/linux-issues.md', *args.extra):
+    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'docs/settings.md', *args.extra):
         if source.name in files:
             raise ValueError('duplicate package filename: ' + source.name)
         files[source.name] = source
@@ -52,7 +52,15 @@ def main():
     for name, source in files.items():
         shutil.copy2(source, output / name)
     readme = output / 'README.md'
-    readme.write_text(readme.read_text().replace('../linux-issues.md', 'linux-issues.md'))
+    readme.write_text(readme.read_text().replace('../linux-issues.md', 'linux-issues.md').replace('../settings.md', 'settings.md'))
+    defaults = output / 'settings.md'
+    text = defaults.read_text()
+    for other in ('k3', 'unmatched', 'p550'):
+        target = 'INSTALL.txt' if other == board else (
+            'https://github.com/openRuyi-Project/ruyifirmware/blob/ruyi/docs/'
+            + other + '/INSTALL.txt')
+        text = text.replace('](' + other + '/INSTALL.txt)', '](' + target + ')')
+    defaults.write_text(text)
     (output / 'build-revision.txt').write_text(subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True))
     names = set(files) | {'build-revision.txt'}
     unexpected = {p.name for p in output.iterdir()} - names - {'SHA256SUMS'}

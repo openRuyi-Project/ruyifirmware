@@ -26,7 +26,7 @@ Verify the original package first. To disable emulation in a copy:
   python3 settings.py normal-spi.bin --default-emulation disabled --output-dir noemu
 
 The tool creates noemu/normal-spi.bin and its SHA256SUMS file. It changes
-only the emulation configuration sector. CPU settings, UEFI variables and
+only the two persistent-default slots. CPU settings, UEFI variables and
 executable firmware bytes stay unchanged. The original recovery-bootrom.bin
 still matches the modified image. Use enabled instead of disabled to
 create an enabled copy in a different output directory.
@@ -35,8 +35,9 @@ Use noemu/normal-spi.bin wherever the procedures below use normal-spi.bin.
 The original package checksum does not apply to the modified image.
 To check the copy, run sha256sum -c SHA256SUMS from the noemu directory.
 
-This sets the initial SPI value. Loading Setup defaults on K3 still selects
-Disabled. Saving a menu choice overrides the initial value.
+This sets the installation default. Setup displays and edits the stored
+defaults. Restore Defaults discards pending edits. Optional UEFI overrides
+still take priority. See settings.md for details.
 
 First installation or migration from another firmware
 
@@ -74,23 +75,19 @@ After flash and verification report OKAY:
 
 Updating an existing Ruyi Firmware installation
 
-Use this package's updater to apply the image's emulation setting.
-Older updaters clear it instead. If the installed updater supports the new
-behavior, press F9 at boot to enter USB Fastboot.
-
-If you cannot confirm that support, enter BootROM. Run the two stage/continue
-pairs in the first-installation section to load this package into RAM.
-At RAM Recovery - USB Fastboot, run the commands below to preserve UEFI
-variables while applying the image setting:
+Install this settings format once with the full flash spi procedure above.
+For later updates, press F9 at boot to enter USB Fastboot. Run:
 
   sha256sum -c SHA256SUMS
   fastboot flash firmware normal-spi.bin
 
-The firmware target preserves UEFI variables and resets CPU selection to
-X100 only. This version applies the emulation setting from the new image.
-It also clears DDR training records
-for retraining on the next normal boot. Platform Settings saves its
-selections persistently, even when the firmware was loaded into RAM.
+The firmware target preserves UEFI variables, valid platform defaults and
+CPU selection. It clears DDR training records for the next normal boot.
+Platform Settings also saves defaults when running from RAM recovery.
+
+For a file update in Setup, put normal-spi.bin and its matching SHA256SUMS
+in the same directory on a FAT filesystem. Open Firmware Update and select
+the image. This method uses the same preservation rules.
 
 After flash and verification report OKAY:
 

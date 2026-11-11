@@ -71,10 +71,7 @@ def check_payload(payload, fd, address):
 
 
 def check_k3(image, enabled):
-    require(settings.inspect(image) == {'enabled': enabled}, 'emulation setting mismatch')
-    start = settings.K3_NETWORK_OFFSET
-    require(image[start:start + settings.SECTOR_SIZE] == b'\xff' * settings.SECTOR_SIZE,
-            'network boot must default to disabled')
+    require(settings.inspect(image) == dict(emulation=enabled, pxe=False, http=False), 'platform defaults mismatch')
 
 
 def check_unmatched(rom, enabled):
@@ -82,14 +79,7 @@ def check_unmatched(rom, enabled):
     cbfs, boot = areas['COREBOOT'], areas['BOOTBLOCK']
     require(areas['PLATFORM_CONFIG'].flags == settings.FMAP_PRESERVE, 'invalid platform settings flags')
     require(cbfs.offset + cbfs.size == len(rom), 'CBFS does not end at the image boundary')
-    for slot in range(settings.SLOT_COUNT):
-        offset = areas['PLATFORM_CONFIG'].offset + slot * settings.SECTOR_SIZE
-        record = settings.decode(rom[offset:offset + settings.RECORD.size])
-        require(record == {'enabled': enabled, 'default_enabled': enabled, 'generation': 0}, 'invalid initial settings')
-    # Memory-mapped SPI boot executes the jump at offset zero.
-    start = jump_target(rom)
-    require(struct.calcsize('<I') <= start < boot.size,
-            'SPI entry jump leaves the bootblock region')
+    require(settings.inspect(rom) == dict(emulation=enabled, pxe=False, http=False), 'platform defaults mismatch')
 
 
 LAYOUT_CHECKS = {'k3': check_k3, 'unmatched': check_unmatched}
@@ -162,25 +152,19 @@ def main():
     enabled = options['EMULATION_ENABLE'] == 'TRUE'
     p550_roms = {}
     uart_stages = eic7700image.check_uart(images[args.uart]) if args.uart else None
-    if board == 'p550':
-        # This platform uses a compiled default and an EFI variable at runtime.
-        generated = list(build.glob('edk2/Build/*/*/RISCV64/RuyiPlatformPkg/Drivers/'
-                                    'VariableEmulationConfigDxe/VariableEmulationConfigDxe/DEBUG/AutoGen.h'))
-        require(len(generated) == 1, 'missing or ambiguous emulation policy build metadata')
-        default = re.search(r'^#define\s+_PCD_VALUE_PcdDefaultDriverEmulation\s+(\S+)',
-                            generated[0].read_text(), re.MULTILINE)
-        require(default is not None and default[1] in ('0U', '1U', '0', '1'),
-                'invalid compiled emulation default')
-        require(default[1].rstrip('U') == str(int(enabled)), 'compiled emulation default mismatch')
     for name, variant in roms.items():
         rom = images[name]
         if board == 'p550':
             if variant == 'normal':
                 require(len(rom) == eic7700image.IMAGE_BYTES, 'invalid P550 SPI size')
                 stages = eic7700image.entries(rom)
-                require(rom[eic7700image.FIRMWARE_BYTES:] ==
-                        b'\xff' * (len(rom) - eic7700image.FIRMWARE_BYTES),
-                        'packaged P550 variable storage must be erased')
+                require(settings.inspect(rom) == dict(emulation=enabled, pxe=False, http=False), 'platform defaults mismatch')
+                tail = bytearray(rom[eic7700image.FIRMWARE_BYTES:])
+                defaults, stride = settings.DEFAULT_LAYOUTS['p550']
+                for slot in range(settings.SLOT_COUNT):
+                    start = defaults + slot * stride - eic7700image.FIRMWARE_BYTES
+                    tail[start:start + stride] = b'\xff' * stride
+                require(tail == b'\xff' * len(tail), 'packaged P550 persistent stores must be erased')
                 for index in range(2):
                     offset, size, *_ = stages[index]
                     start = offset + eic7700image.SIGNATURE_BYTES

@@ -142,7 +142,7 @@ verify: all
 	  --cbfstool "$(BUILD)/coreboot-normal/cbfstool"
 
 package: verify
-	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(DIST)" $(PACKAGE_EXTRA)
+	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(DIST)" $(PACKAGE_COMMON) $(PACKAGE_EXTRA)
 
 help:
 	printf '%s\n' 'make BOARD=<board> TARGET=RELEASE package' \

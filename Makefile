@@ -18,6 +18,7 @@ CROSS_COMPILE ?= riscv64-linux-gnu-
 RISCV_ISA := rv64gc
 INPUT_PREPARER :=
 SETTINGS_TOOL := tools/settings.py
+PACKAGE_COMMON := "$(ROOT)/tools/settings.py" "$(ROOT)/tools/eic7700/firmware_image.py"
 EMULATION_ENABLE ?= TRUE
 ifneq ($(EMULATION_ENABLE),TRUE)
 ifneq ($(EMULATION_ENABLE),FALSE)

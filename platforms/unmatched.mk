@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 EDK_PLATFORM := SiFiveUnmatched
 EDK_DSC := SiFivePlatformPkg/Unmatched/Unmatched.dsc
-EDK_EXTRA_FLAGS := -D MAU_DEFAULT_ENABLE=$(EMULATION_ENABLE)
+EDK_EXTRA_FLAGS :=
 FD_FILE := UNMATCHED.fd
 FD_SIZE := 0x400000
 COREBOOT_CONFIG := config.sifive_hifive_unmatched
@@ -19,4 +19,4 @@ CBFS_REPLACE_DTB := TRUE
 ROM_PACKER :=
 RECOVERY_METHOD := jtag
 FIRMWARE_IRQ_NODES :=
-PACKAGE_EXTRA := "$(ROOT)/tools/settings.py" "$(ROOT)/tools/unmatched/openocd.cfg" "$(ROOT)/tools/unmatched/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl"
+PACKAGE_EXTRA := "$(ROOT)/tools/unmatched/openocd.cfg" "$(ROOT)/tools/unmatched/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl"

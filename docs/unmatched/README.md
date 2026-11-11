@@ -30,7 +30,8 @@ CPU, memory, PCIe devices and storage.
 The serial console uses TTYTERM at 115200 baud, 8N1, without flow control.
 Use a terminal with xterm-compatible keys.
 
-UEFI driver emulation is enabled by default. Change it in Platform Settings,
+The release image enables UEFI driver emulation. Change its stored default
+in Platform Settings,
 then save and restart. Supported older AMD cards use the included ARM64
 GOP 1.68. Other cards use their x64 UEFI driver. Older AMD card support is
 experimental.
@@ -42,7 +43,8 @@ UEFI variables and platform settings.
 
 ## Network boot
 
-PXE and HTTP Boot are included in every image and disabled by default.
+PXE and HTTP Boot are included in every image. Their installation defaults
+are disabled.
 Open Platform Settings to enable either method. Save and restart to apply.
 HTTP Boot supports `http://` URLs. HTTPS is not supported.
 
@@ -57,3 +59,6 @@ command line.
 
 See [Linux issues](../linux-issues.md) for the firmware framebuffer and PCIe
 resource conflict and its workaround.
+
+See [Platform defaults](../settings.md) for settings, optional overrides
+and installation-image configuration.

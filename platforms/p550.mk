@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 EDK_PLATFORM := SiFivePremierP550
 EDK_DSC := EswinPlatformPkg/PremierP550/PremierP550.dsc
-EDK_EXTRA_FLAGS := -D MAU_DEFAULT_ENABLE=$(EMULATION_ENABLE)
+EDK_EXTRA_FLAGS :=
 RISCV_ISA := rv64gc_zba_zbb
 FD_FILE := PREMIERP550.fd
 FD_SIZE := 0x400000
@@ -23,8 +23,5 @@ RECOVERY_METHOD := uart-jtag
 FIRMWARE_IRQ_NODES :=
 INPUT_PREPARER := tools/eic7700/prepare-inputs.py
 INPUT_PREPARER_ARGS = --cross-compile "$(CROSS_COMPILE)"
-# The P550 stores its current emulation policy in UEFI variables.
-# EMULATION_ENABLE sets the compiled default for a fresh variable store.
-SETTINGS_TOOL :=
 PACKAGE_EXTRA := "$(ROOT)/platforms/p550/openocd.cfg" "$(ROOT)/tools/eic7700/load-ram.tcl" \
   "$(BUILD)/ddr-LICENSE.txt" "$(BUILD)/ddr-COPYING.txt"

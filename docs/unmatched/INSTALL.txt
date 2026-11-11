@@ -79,8 +79,9 @@ Use noemu/normal-spi.bin in both the write and verify commands below.
 The tool changes only the platform setting in the copy.
 
 After installation, use Platform Settings to change emulation. Save the
-setting and restart. Loading Setup defaults restores the initial setting
-stored in the programmed image.
+setting and restart. Restore Defaults reloads the stored defaults and
+discards pending edits. Optional UEFI overrides still take priority.
+See settings.md for details.
 
 Program SPI through JTAG
 ------------------------

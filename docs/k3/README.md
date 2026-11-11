@@ -44,11 +44,12 @@ system information tools such as fastfetch.
 
 X100 + A100 mode requires userspace that can run without vector instructions,
 such as RV64GC. Do not use an RVA23U64 root filesystem in this mode.
-Firmware updates restore X100 only.
+Firmware updates preserve a valid CPU selection.
 
 ## Graphics
 
-UEFI driver emulation is enabled by default. Change it in Platform Settings,
+The release image enables UEFI driver emulation. Change its stored default
+in Platform Settings,
 then save and restart. To change the initial setting before flashing, use
 `settings.py` as described in [INSTALL.txt](INSTALL.txt).
 
@@ -67,10 +68,11 @@ For an offline build, put `Arm64Gop_1_68.efi` in a directory and set
 
 ## Network boot
 
-PXE and HTTP Boot are included in every image and disabled by default.
+PXE and HTTP Boot are included in every image. Their installation defaults
+are disabled.
 Open Platform Settings to enable either method. Save and restart to apply.
 HTTP Boot supports `http://` URLs. HTTPS is not supported.
-Firmware updates load the network boot settings from the new image.
+Firmware updates preserve the saved platform defaults.
 
 ## Operating systems
 
@@ -79,3 +81,6 @@ Linux mainline support is provided on a best-effort basis.
 
 See [Linux issues](../linux-issues.md) for the firmware framebuffer and PCIe
 resource conflict and its workaround.
+
+See [Platform defaults](../settings.md) for settings, optional overrides
+and installation-image configuration.

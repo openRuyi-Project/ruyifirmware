@@ -11,7 +11,9 @@ Copy normal-spi.bin and SHA256SUMS to the same directory on a FAT
 partition on an SD card or USB drive.
 Start the board, press F2, and select Firmware Update. Select the file
 and confirm the update. Wait for verification to finish before restarting.
-The updater preserves UEFI variables.
+The updater preserves UEFI variables, valid platform defaults and DDR ECC.
+On the first installation of this settings format, it uses the image
+records because no valid platform defaults exist yet.
 
 USB Fastboot also supports SPI updates. Enter USB Fastboot from Boot
 Manager before connecting the dual-role USB-A port to the host. Check

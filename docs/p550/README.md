@@ -16,8 +16,8 @@ See [PCIe power checks](pcie-power.md) if a card fails to establish a link.
 SATA disks are available in the boot menu and UEFI Shell.
 
 Platform Settings controls UEFI driver emulation, PXE and HTTP Boot.
-Driver emulation is enabled by default. PXE and HTTP Boot are disabled
-by default. Save changes and restart to apply them.
+Release images enable emulation and disable PXE and HTTP Boot.
+Save changes and restart to apply them.
 
 DDR ECC is disabled by default. Enable it in Platform Settings.
 Save the change. Restart the board to apply it.
@@ -47,3 +47,6 @@ framebuffer conflict with the PCIe host bridge.
 
 Board information and schematics are available from
 [SiFive](https://www.sifive.com/boards/hifive-premier-p550).
+
+See [Platform defaults](../settings.md) for settings, optional overrides
+and installation-image configuration.

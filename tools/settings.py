@@ -1,35 +1,32 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Inspect or set the initial driver-emulation setting in a K3 or Unmatched image."""
+"""Inspect or change platform defaults in a Ruyi Firmware SPI image.
 
+This changes image records. It does not change settings on a running board.
+Use this tool with the firmware files from the same release package.
+"""
 import argparse
 from collections import namedtuple
 import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 import zlib
 
-# On-flash ABI shared with the platform settings libraries.
-UNMATCHED_OFFSET = 0x10000
-SECTOR_SIZE = 0x1000
+# Keep inspection from creating extra files in an extracted package.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'eic7700'))
+from firmware_image import entries, SIGNATURE_BYTES, COREBOOT_BYTES, IMAGE_BYTES
+
+# Current defaults ABI. No legacy records are read or converted.
+DEFAULT_LAYOUTS = {'k3': (0x20d000, 0x1000), 'unmatched': (0x10000, 0x1000), 'p550': (0x720000, 0x10000)}
+DEFAULT_MAGIC = int.from_bytes(b'RYCF', 'little')
+DEFAULT_COMMIT = int.from_bytes(b'DONE', 'little')
+DEFAULT_BODY = struct.Struct('<IHHII')
+DEFAULT_RECORD = struct.Struct('<IHHIIII')
+DEFAULT_MASK = 7
 SLOT_COUNT = 2
-MAGIC = int.from_bytes(b'UMCF', 'little')
-COMMIT = int.from_bytes(b'DONE', 'little')
-K3_OFFSET = 0x20e000
-K3_NETWORK_OFFSET = 0x20d000
-K3_MAGIC = int.from_bytes(b'K3EM', 'little')
-RECORD_VERSION = 1
-ENABLED = 1 << 0
-DEFAULT_ENABLED = 1 << 1
-GENERATION_MASK = (1 << 32) - 1
-GENERATION_HALF_RANGE = 1 << 31
-RECORD_BODY = struct.Struct('<IHHII')
-RECORD_TRAILER = struct.Struct('<II')  # CRC32 and commit marker
-RECORD = struct.Struct('<IHHIIII')
-K3_BODY = struct.Struct('<IHHI')
-K3_RECORD = struct.Struct('<IHHII')
-CRC32 = struct.Struct('<I')
 
 FMAP_HEADER = struct.Struct('<8sBBQI32sH')
 FMAP_AREA = struct.Struct('<II32sH')
@@ -50,36 +47,10 @@ LAYOUTS = {
     'unmatched': (0x800000, {
         'BOOTBLOCK': (0x0, 0x10000),
         'FMAP': (0x20000, 0x200),
-        'PLATFORM_CONFIG': (UNMATCHED_OFFSET, 0x10000),
+        'PLATFORM_CONFIG': (0x10000, 0x10000),
         'COREBOOT': (0x20200, 0x7dfe00),
     }),
 }
-
-
-def region_bytes(image, area):
-    return image[area.offset:area.offset + area.size]
-
-
-def encode(enabled, generation=0, default_enabled=None):
-    if default_enabled is None:
-        default_enabled = enabled
-    flags = (ENABLED if enabled else 0) | (DEFAULT_ENABLED if default_enabled else 0)
-    header = RECORD_BODY.pack(MAGIC, RECORD_VERSION, RECORD.size,
-                              generation & GENERATION_MASK, flags)
-    return header + RECORD_TRAILER.pack(zlib.crc32(header), COMMIT)
-
-
-def decode(data):
-    if len(data) < RECORD.size:
-        return None
-    magic, version, size, generation, flags, crc, commit = RECORD.unpack_from(data)
-    if ((magic, version, size, commit) != (MAGIC, RECORD_VERSION, RECORD.size, COMMIT)
-            or flags & ~(ENABLED | DEFAULT_ENABLED)):
-        return None
-    if zlib.crc32(data[:RECORD_BODY.size]) != crc:
-        return None
-    return {'enabled': bool(flags & ENABLED),
-            'default_enabled': bool(flags & DEFAULT_ENABLED), 'generation': generation}
 
 
 def read_layout(image):
@@ -87,7 +58,7 @@ def read_layout(image):
                   if len(image) == size and
                   image[required['FMAP'][0]:required['FMAP'][0] + 8] == b'__FMAP__']
     if len(candidates) != 1:
-        raise ValueError('expected an unambiguous 8 MiB K3 or Unmatched image')
+        raise ValueError('unsupported firmware image layout')
     board, required = candidates[0]
     fmap, fmap_size = required['FMAP']
     signature, major, minor, base, size, name, count = FMAP_HEADER.unpack_from(image, fmap)
@@ -109,58 +80,90 @@ def read_layout(image):
     return board, areas
 
 
+
 def check_layout(image):
-    return read_layout(image)[0]
+    if image[:4] != b'ESWB':
+        return read_layout(image)[0]
+    if len(image) != IMAGE_BYTES:
+        raise ValueError('P550 SPI image must be 8 MiB')
+    records = entries(image)
+    offset, size, _, _ = records[2]
+    if size != COREBOOT_BYTES:
+        raise ValueError('invalid P550 coreboot size')
+    rom = image[offset + SIGNATURE_BYTES:offset + SIGNATURE_BYTES + size]
+    fmap = 0x20000
+    fields = FMAP_HEADER.unpack_from(rom, fmap)
+    if fields != (b'__FMAP__', 1, 1, 0, COREBOOT_BYTES, b'FLASH' + bytes(27), 3):
+        raise ValueError('invalid P550 flash map')
+    required = [(0, 0x20000, b'BOOTBLOCK', 0), (fmap, 0x1000, b'FMAP', 0),
+                (0x21000, 0x3df000, b'COREBOOT', 0)]
+    for index, expected in enumerate(required):
+        start, length, name, flags = FMAP_AREA.unpack_from(rom, fmap + FMAP_HEADER.size + index * FMAP_AREA.size)
+        if (start, length, name.rstrip(b'\0'), flags) != expected:
+            raise ValueError('unsupported P550 settings layout')
+    return 'p550'
 
 
-def encode_k3(enabled):
-    header = K3_BODY.pack(K3_MAGIC, RECORD_VERSION, K3_RECORD.size, int(bool(enabled)))
-    return header + CRC32.pack(zlib.crc32(header))
+def encode(values, generation=0):
+    body = DEFAULT_BODY.pack(DEFAULT_MAGIC, 1, DEFAULT_RECORD.size, generation, values)
+    return body + struct.pack('<II', zlib.crc32(body), DEFAULT_COMMIT)
 
 
-def decode_k3(data):
-    if len(data) < K3_RECORD.size:
+def decode(data):
+    magic, version, size, generation, values, crc, commit = DEFAULT_RECORD.unpack_from(data)
+    if (magic, version, size, commit) != (DEFAULT_MAGIC, 1, DEFAULT_RECORD.size, DEFAULT_COMMIT):
         return None
-    magic, version, size, value, crc = K3_RECORD.unpack_from(data)
-    if (magic, version, size) != (K3_MAGIC, RECORD_VERSION, K3_RECORD.size) or value > 1:
+    if values & ~DEFAULT_MASK or zlib.crc32(data[:DEFAULT_BODY.size]) != crc:
         return None
-    if zlib.crc32(data[:K3_BODY.size]) != crc:
-        return None
-    return {'enabled': bool(value)}
+    return generation, values
+
+
+def read_defaults(image, allow_empty=False):
+    offset, stride = DEFAULT_LAYOUTS[check_layout(image)]
+    selected = None
+    empty = True
+    for slot in range(SLOT_COUNT):
+        start = offset + slot * stride
+        data = image[start:start + DEFAULT_RECORD.size]
+        empty = empty and data == b'\xff' * DEFAULT_RECORD.size
+        record = decode(data)
+        if record is None:
+            continue
+        if selected is None or 0 < (record[0] - selected[0]) & 0xffffffff < 0x80000000:
+            selected = record
+    if selected is None:
+        if allow_empty and empty:
+            return 0
+        raise ValueError('no valid current-format defaults record; reflash a complete current package')
+    return selected[1]
 
 
 def inspect(image):
-    if check_layout(image) == 'k3':
-        return decode_k3(image[K3_OFFSET:K3_OFFSET + K3_RECORD.size])
-    selected = None
-    for slot in range(SLOT_COUNT):
-        start = UNMATCHED_OFFSET + slot * SECTOR_SIZE
-        value = decode(image[start:start + RECORD.size])
-        if value is None:
-            continue
-        delta = 0 if selected is None else (value['generation'] - selected['generation']) & GENERATION_MASK
-        if selected is None or 0 < delta < GENERATION_HALF_RANGE:
-            selected = dict(value, slot=slot)
-    return selected
+    values = read_defaults(image)
+    return dict(emulation=bool(values & 1), pxe=bool(values & 2), http=bool(values & 4))
 
 
-def configure(image, enabled):
-    board = check_layout(image)
+def configure(image, enabled=None, pxe=None, http=None):
+    values = read_defaults(image, allow_empty=True)
+    for bit, value in [(1, enabled), (2, pxe), (4, http)]:
+        if value is not None:
+            values = (values & ~bit) | (bit if value else 0)
     result = bytearray(image)
-    record = encode_k3(enabled) if board == 'k3' else encode(enabled)
-    offsets = ([K3_OFFSET] if board == 'k3' else
-               [UNMATCHED_OFFSET + slot * SECTOR_SIZE for slot in range(SLOT_COUNT)])
-    for start in offsets:
-        result[start:start + SECTOR_SIZE] = b'\xff' * SECTOR_SIZE
-        result[start:start + len(record)] = record
+    offset, stride = DEFAULT_LAYOUTS[check_layout(image)]
+    for slot in range(SLOT_COUNT):
+        start = offset + slot * stride
+        result[start:start + stride] = b'\xff' * stride
+        result[start:start + DEFAULT_RECORD.size] = encode(values)
     return bytes(result)
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('image', type=Path)
     parser.add_argument('--default-emulation', choices=('enabled', 'disabled'),
-                        help='set the initial SPI value. K3 Setup defaults remain disabled')
+                        help='set the emulation default in the output image')
+    parser.add_argument('--default-pxe', choices=('enabled', 'disabled'))
+    parser.add_argument('--default-http', choices=('enabled', 'disabled'))
     output = parser.add_mutually_exclusive_group()
     output.add_argument('--output', type=Path)
     output.add_argument('--output-dir', type=Path,
@@ -174,10 +177,11 @@ def main():
 
 def process(args, parser):
     image = args.image.read_bytes()
-    if args.default_emulation is not None:
+    if any(value is not None for value in (args.default_emulation, args.default_pxe, args.default_http)):
         if args.output is None and args.output_dir is None:
-            parser.error('--output or --output-dir is required when changing the initial setting')
-        image = configure(image, args.default_emulation == 'enabled')
+            parser.error('--output or --output-dir is required when changing the default')
+        values = [None if value is None else value == 'enabled' for value in (args.default_emulation, args.default_pxe, args.default_http)]
+        image = configure(image, *values)
         if args.output_dir is not None:
             if args.image.name == 'SHA256SUMS' or any(char in args.image.name for char in '\n\r\\'):
                 parser.error('unsupported image filename')
@@ -188,8 +192,8 @@ def process(args, parser):
             (args.output_dir / 'SHA256SUMS').write_text(
                 hashlib.sha256(image).hexdigest() + '  ' + args.output.name + '\n')
     elif args.output is not None or args.output_dir is not None:
-        parser.error('output options require --default-emulation')
-    print(json.dumps({'board': check_layout(image), 'settings': inspect(image),
+        parser.error('output options require a default-setting option')
+    print(json.dumps({'board': check_layout(image), 'defaults': inspect(image),
                       'sha256': hashlib.sha256(image).hexdigest()}, indent=2))
 
 
