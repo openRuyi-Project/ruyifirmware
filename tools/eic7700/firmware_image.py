@@ -1,12 +1,7 @@
 # SPDX-License-Identifier: MIT
-"""EIC7700 BootROM container layout shared by packaging and settings tools."""
+"""EIC7700 BootROM container format, independent of board flash layout."""
 import struct
 
-IMAGE_BYTES = 0x800000
-FIRMWARE_BYTES = 0x600000
-COREBOOT_BYTES = 0x400000
-SCPU_ADDRESS = 0x59000000
-MCPU_ADDRESS = 0x90000000
 FHT_MAGIC = 0x42575345
 SIGNATURE_MAGIC = 0xbb455357
 STAGE_TYPES = (0x70, 0x10, 0x30)
@@ -14,7 +9,9 @@ HEADER = struct.Struct('<II')
 ENTRY = struct.Struct('<IQQBBBB4sII')
 SIGNATURE_BYTES = 256
 
-def entries(image):
+def entries(image, *, firmware_bytes, stage_addresses):
+    if len(stage_addresses) != len(STAGE_TYPES):
+        raise ValueError('expected one address for each ROM stage')
     if len(image) < HEADER.size:
         raise ValueError('truncated ROM header')
     magic, count = HEADER.unpack_from(image)
@@ -28,10 +25,10 @@ def entries(image):
         if (version != 1 or sign or key or kind != STAGE_TYPES[index]
                 or last != (index == 2) or padding != bytes(4) or r1 or r2
                 or offset < end or offset % 32 or not size
-                or offset + SIGNATURE_BYTES + size > min(len(image), FIRMWARE_BYTES)):
+                or offset + SIGNATURE_BYTES + size > min(len(image), firmware_bytes)):
             raise ValueError(f'invalid ROM entry {index}')
         magic, reserved, link, stored_offset, stored_size, load, entry = struct.unpack_from('<IIQQQQQ', image, offset)
-        expected = MCPU_ADDRESS if index == 2 else SCPU_ADDRESS
+        expected = stage_addresses[index]
         if (magic != SIGNATURE_MAGIC or reserved or link or stored_offset != offset
                 or stored_size != size or load != expected or entry != expected
                 or image[offset + 48:offset + 51] != bytes(3)

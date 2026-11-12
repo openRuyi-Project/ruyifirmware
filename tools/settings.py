@@ -17,10 +17,10 @@ import zlib
 # Keep inspection from creating extra files in an extracted package.
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'eic7700'))
-from firmware_image import entries, SIGNATURE_BYTES, COREBOOT_BYTES, IMAGE_BYTES
+from firmware_image import entries, SIGNATURE_BYTES
+from image_layout import DEFAULT_LAYOUTS, STAGE_LAYOUTS
 
 # Current defaults ABI. No legacy records are read or converted.
-DEFAULT_LAYOUTS = {'k3': (0x20d000, 0x1000), 'unmatched': (0x10000, 0x1000), 'p550': (0x720000, 0x10000)}
 DEFAULT_MAGIC = int.from_bytes(b'RYCF', 'little')
 DEFAULT_COMMIT = int.from_bytes(b'DONE', 'little')
 DEFAULT_BODY = struct.Struct('<IHHII')
@@ -84,16 +84,18 @@ def read_layout(image):
 def check_layout(image):
     if image[:4] != b'ESWB':
         return read_layout(image)[0]
-    if len(image) != IMAGE_BYTES:
+    layout = STAGE_LAYOUTS['p550']
+    if len(image) != layout.image_bytes:
         raise ValueError('P550 SPI image must be 8 MiB')
-    records = entries(image)
+    records = entries(image, firmware_bytes=layout.firmware_bytes,
+                      stage_addresses=(layout.scpu_address, layout.scpu_address, layout.mcpu_address))
     offset, size, _, _ = records[2]
-    if size != COREBOOT_BYTES:
+    if size != layout.coreboot_bytes:
         raise ValueError('invalid P550 coreboot size')
     rom = image[offset + SIGNATURE_BYTES:offset + SIGNATURE_BYTES + size]
     fmap = 0x20000
     fields = FMAP_HEADER.unpack_from(rom, fmap)
-    if fields != (b'__FMAP__', 1, 1, 0, COREBOOT_BYTES, b'FLASH' + bytes(27), 3):
+    if fields != (b'__FMAP__', 1, 1, 0, layout.coreboot_bytes, b'FLASH' + bytes(27), 3):
         raise ValueError('invalid P550 flash map')
     required = [(0, 0x20000, b'BOOTBLOCK', 0), (fmap, 0x1000, b'FMAP', 0),
                 (0x21000, 0x3df000, b'COREBOOT', 0)]

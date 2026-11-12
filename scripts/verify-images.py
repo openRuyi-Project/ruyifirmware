@@ -151,18 +151,20 @@ def main():
     require(args.compatible in compatible, 'device tree board mismatch')
     enabled = options['EMULATION_ENABLE'] == 'TRUE'
     p550_roms = {}
-    uart_stages = eic7700image.check_uart(images[args.uart]) if args.uart else None
+    uart_stages = eic7700image.check_uart(images[args.uart], settings.STAGE_LAYOUTS['p550']) if args.uart else None
     for name, variant in roms.items():
         rom = images[name]
         if board == 'p550':
             if variant == 'normal':
-                require(len(rom) == eic7700image.IMAGE_BYTES, 'invalid P550 SPI size')
-                stages = eic7700image.entries(rom)
+                require(len(rom) == settings.STAGE_LAYOUTS['p550'].image_bytes, 'invalid P550 SPI size')
+                layout = settings.STAGE_LAYOUTS['p550']
+                stages = eic7700image.entries(rom, firmware_bytes=layout.firmware_bytes,
+                    stage_addresses=(layout.scpu_address, layout.scpu_address, layout.mcpu_address))
                 require(settings.inspect(rom) == dict(emulation=enabled, pxe=False, http=False), 'platform defaults mismatch')
-                tail = bytearray(rom[eic7700image.FIRMWARE_BYTES:])
+                tail = bytearray(rom[settings.STAGE_LAYOUTS['p550'].firmware_bytes:])
                 defaults, stride = settings.DEFAULT_LAYOUTS['p550']
                 for slot in range(settings.SLOT_COUNT):
-                    start = defaults + slot * stride - eic7700image.FIRMWARE_BYTES
+                    start = defaults + slot * stride - settings.STAGE_LAYOUTS['p550'].firmware_bytes
                     tail[start:start + stride] = b'\xff' * stride
                 require(tail == b'\xff' * len(tail), 'packaged P550 persistent stores must be erased')
                 for index in range(2):
@@ -181,7 +183,7 @@ def main():
                 offset, size, *_ = stages[2]
                 start = offset + eic7700image.SIGNATURE_BYTES
                 rom = rom[start:start + size]
-            require(len(rom) == eic7700image.COREBOOT_BYTES, 'invalid P550 RAM firmware size')
+            require(len(rom) == settings.STAGE_LAYOUTS['p550'].coreboot_bytes, 'invalid P550 RAM firmware size')
             p550_roms[variant] = rom
         else:
             detected_board, areas = settings.read_layout(rom)

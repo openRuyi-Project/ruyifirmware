@@ -15,9 +15,9 @@ DTB_COMPATIBLE := sifive,hifive-premier-p550
 CBFS_DTB_NAME := fallback/DTB
 CBFS_REPLACE_DTB := FALSE
 ROM_PACKER := tools/eic7700/image.py
-ROM_PACK_ARGS = --sys-init "$(BUILD)/sys-init.bin" \
+ROM_PACK_ARGS = --layout $(BOARD) --sys-init "$(BUILD)/sys-init.bin" \
   --ddr "$(BUILD)/ddr-dispatch.bin"
-ROM_RECOVERY_PACK_ARGS = --sys-init "$(BUILD)/sys-init.bin" \
+ROM_RECOVERY_PACK_ARGS = --layout $(BOARD) --sys-init "$(BUILD)/sys-init.bin" \
   --ddr "$(BUILD)/ddr-normal.bin"
 RECOVERY_METHOD := uart-jtag
 FIRMWARE_IRQ_NODES :=
