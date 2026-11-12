@@ -28,7 +28,6 @@ if {[file size $fu740_bootblock] > $fu740_bootblock_limit ||
 init
 fu740_guard {
     reset halt
-    adapter speed 5000
     targets fu740.cpu1
     riscv set_mem_access progbuf sysbus abstract
     fu740.cpu1 configure -work-area-phys $fu740_lim_work_area \

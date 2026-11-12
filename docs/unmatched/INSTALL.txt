@@ -28,6 +28,8 @@ Use OpenOCD 0.12.0 or later with FTDI, RISC-V and fespi support.
 Debian 13 provides a suitable package: apt install openocd.
 Use openocd.cfg and all Tcl scripts from the same firmware package.
 The scripts control each hart directly and do not require smp commands.
+The loaders keep the configured adapter speed. To select 5 MHz,
+add -c 'adapter speed 5000' after -f openocd.cfg.
 Run only one OpenOCD process at a time. The serial terminal
 can stay open on interface 1. If USB access is denied, run OpenOCD with
 sudo or configure host USB permissions.
