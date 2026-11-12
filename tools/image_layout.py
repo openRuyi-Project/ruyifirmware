@@ -26,3 +26,13 @@ DEFAULT_LAYOUTS = {
     'p550': (0x720000, 0x10000),
 }
 
+# Coreboot FU740 recovery contract. All consumers use the generated Tcl.
+FU740_RECOVERY = {
+    'lim_base': 0x08000000,
+    'bootblock_limit': 0x10000,
+    'rom_base': 0x90000000,
+    'rom_size': 0x800000,
+    'lim_work_area': 0x08060000,
+    'dram_work_area': 0x8e000000,
+    'work_area_size': 0x2000,
+}
