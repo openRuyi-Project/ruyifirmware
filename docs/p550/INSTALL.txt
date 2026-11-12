@@ -43,6 +43,8 @@ Connect the FT4232 USB debug interface to the host. It provides:
 Use 115200 baud, 8N1, with no flow control for both consoles.
 Use stable /dev/serial/by-path names when multiple boards are connected.
 Install an OpenOCD build with FTDI, RISC-V and riscv exec_progbuf support.
+The loader keeps the adapter speed selected in openocd.cfg. To select
+5 MHz explicitly, add -c 'adapter speed 5000' after -f openocd.cfg.
 Install ascii-xfr from minicom.
 The OpenOCD 0.12.0 release does not support this loader.
 

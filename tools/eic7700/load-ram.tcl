@@ -24,7 +24,6 @@ foreach hart {0 1 2 3} {
     }
 }
 targets eic7700.cpu0
-adapter speed 5000
 load_image $eic7700_rom $eic7700_rom_address bin
 verify_image $eic7700_rom $eic7700_rom_address bin
 foreach hart {0 1 2 3} {
