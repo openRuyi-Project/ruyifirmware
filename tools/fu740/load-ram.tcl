@@ -3,8 +3,9 @@
 if {![info exists fu740_image_dir]} {
     error "Set fu740_image_dir to the recovery package directory"
 }
+source [file join $fu740_image_dir recovery-addresses.tcl]
 set fu740_rom [file join $fu740_image_dir recovery-jtag.rom]
-if {[file size $fu740_rom] != 0x800000} {
+if {[file size $fu740_rom] != $fu740_rom_size} {
     error "Invalid FU740 recovery image size"
 }
 source [file join $fu740_image_dir prepare-ddr.tcl]

@@ -7,8 +7,6 @@ FD_SIZE := 0x400000
 COREBOOT_CONFIG := config.sifive_hifive_unmatched
 COREBOOT_CROSS_COMPILE ?= riscv64-unknown-elf-
 COREBOOT_RECOVERY_OPTION := CONFIG_HIFIVE_UNMATCHED_JTAG_BOOT=y
-JTAG_DDR_SYMBOL := cbmem_initialize_empty
-JTAG_DDR_VARIABLE := fu740_ddr_ready
 SBI_ADDRESS := 0x80000000
 PAYLOAD_ADDRESS := 0x82200000
 DTB_SOURCE := arch/riscv/boot/dts/sifive/hifive-unmatched-a00.dts

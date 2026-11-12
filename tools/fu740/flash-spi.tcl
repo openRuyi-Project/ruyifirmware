@@ -3,8 +3,9 @@
 if {![info exists fu740_image_dir]} {
     error "Set fu740_image_dir to the firmware package directory"
 }
+source [file join $fu740_image_dir recovery-addresses.tcl]
 set fu740_spi_image [file join $fu740_image_dir normal-spi.bin]
-if {[file size $fu740_spi_image] != 0x800000} {
+if {[file size $fu740_spi_image] != $fu740_rom_size} {
     error "Invalid FU740 SPI image size"
 }
 source [file join $fu740_image_dir prepare-ddr.tcl]

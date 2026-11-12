@@ -115,8 +115,9 @@ ifeq ($(RECOVERY_METHOD),jtag)
 recovery: edk2-normal dtb coreboot-recovery
 	$(call assemble_rom,recovery,recovery-jtag.rom)
 	cp "$(BUILD)/coreboot-recovery/cbfs/fallback/bootblock.raw.bin" "$(BUILD)/recovery-bootblock.bin"
-	$(COREBOOT_CROSS_COMPILE)nm "$(BUILD)/coreboot-recovery/cbfs/fallback/bootblock.debug" | \
-	  awk '$$3 == "$(JTAG_DDR_SYMBOL)" { print "set $(JTAG_DDR_VARIABLE) 0x" $$1 }' > "$(BUILD)/recovery-addresses.tcl"
+	$(PYTHON) "$(ROOT)/scripts/recovery-layout.py" $(BOARD) --output "$(BUILD)/recovery-addresses.tcl" \
+	  --rom "$(BUILD)/recovery-jtag.rom" --nm "$(COREBOOT_CROSS_COMPILE)nm" \
+	  --bootblock "$(BUILD)/coreboot-recovery/cbfs/fallback/bootblock.debug"
 else ifeq ($(RECOVERY_METHOD),bootrom)
 recovery: normal
 	$(PYTHON) "$(ROOT)/$(ROM_PACKER)" ram --rom "$(BUILD)/normal-spi.bin" --output "$(BUILD)/recovery-bootrom.bin"

@@ -2,15 +2,6 @@
 if {![info exists fu740_harts]} {
     error "Use openocd.cfg and recovery scripts from the same package"
 }
-# Memory contract from coreboot's FU740 memlayout.ld and Unmatched cbfs_ram.c.
-set fu740_lim_base 0x08000000
-set fu740_bootblock_limit 0x10000
-set fu740_rom_base 0x90000000
-set fu740_rom_size 0x800000
-# OpenOCD scratch space stays outside the bootblock and loaded ROM.
-set fu740_lim_work_area 0x08060000
-set fu740_dram_work_area 0x8e000000
-set fu740_work_area_size 0x2000
 set fu740_ddr_timeout_ms 10000
 
 # Set fu740_image_dir to the directory containing the recovery package.
