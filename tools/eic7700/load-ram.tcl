@@ -4,9 +4,7 @@ if {![info exists eic7700_image_dir]} {
     error "Set eic7700_image_dir to the recovery package directory"
 }
 set eic7700_rom [file join $eic7700_image_dir recovery-jtag.rom]
-set eic7700_rom_address 0x90000000
-set eic7700_rom_size 0x400000
-set eic7700_wait_address 0x80000000
+source [file join $eic7700_image_dir recovery-addresses.tcl]
 set eic7700_pmp_lock_mask 0x8080808080808080
 if {[file size $eic7700_rom] != $eic7700_rom_size} {
     error "Invalid EIC7700 recovery image size"

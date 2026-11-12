@@ -125,6 +125,8 @@ else
 recovery: normal
 	cp "$(BUILD)/normal.rom" "$(BUILD)/recovery-jtag.rom"
 	$(PYTHON) "$(ROOT)/$(ROM_PACKER)" uart $(ROM_RECOVERY_PACK_ARGS) --output "$(BUILD)/recovery-ddr.ihex"
+	$(PYTHON) "$(ROOT)/scripts/recovery-layout.py" $(BOARD) --output "$(BUILD)/recovery-addresses.tcl" \
+	  --rom "$(BUILD)/recovery-jtag.rom"
 endif
 
 source-info:

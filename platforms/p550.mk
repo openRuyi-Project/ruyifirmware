@@ -23,5 +23,5 @@ RECOVERY_METHOD := uart-jtag
 FIRMWARE_IRQ_NODES :=
 INPUT_PREPARER := tools/eic7700/prepare-inputs.py
 INPUT_PREPARER_ARGS = --cross-compile "$(CROSS_COMPILE)"
-PACKAGE_EXTRA := "$(ROOT)/platforms/p550/openocd.cfg" "$(ROOT)/tools/eic7700/load-ram.tcl" \
+PACKAGE_EXTRA := "$(ROOT)/platforms/p550/openocd.cfg" "$(ROOT)/tools/eic7700/load-ram.tcl" "$(BUILD)/recovery-addresses.tcl" \
   "$(BUILD)/ddr-LICENSE.txt" "$(BUILD)/ddr-COPYING.txt"
