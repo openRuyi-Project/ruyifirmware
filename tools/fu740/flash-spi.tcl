@@ -8,18 +8,18 @@ if {[file size $fu740_spi_image] != 0x800000} {
     error "Invalid FU740 SPI image size"
 }
 source [file join $fu740_image_dir prepare-ddr.tcl]
-fu740_spi_probe
-targets fu740.cpu1
-riscv smp off
-riscv set_ebreakm on
-flash write_image erase $fu740_spi_image 0x20000000 bin
-verify_image $fu740_spi_image 0x20000000 bin
-echo "Complete SPI image verified"
-foreach hart {0 1 2 3 4} {
-    targets fu740.cpu$hart
-    riscv set_ebreakm off
-    riscv set_ebreaks off
-    riscv set_ebreaku off
+fu740_guard {
+    fu740_spi_probe
+    targets fu740.cpu1
+    riscv set_ebreakm on
+    flash write_image erase $fu740_spi_image 0x20000000 bin
+    verify_image $fu740_spi_image 0x20000000 bin
+    echo "Complete SPI image verified"
+    foreach hart $::fu740_harts {
+        targets fu740.cpu$hart
+        riscv set_ebreakm off
+        riscv set_ebreaks off
+        riscv set_ebreaku off
+    }
+    reset run
 }
-riscv smp on
-reset run

@@ -8,11 +8,11 @@ if {[file size $fu740_rom] != 0x800000} {
     error "Invalid FU740 recovery image size"
 }
 source [file join $fu740_image_dir prepare-ddr.tcl]
-riscv smp off
-riscv set_ebreakm on
-load_image $fu740_rom $fu740_rom_base bin
-verify_image $fu740_rom $fu740_rom_base bin
-riscv set_ebreakm off
-riscv smp on
-resume
-echo "coreboot RAM recovery started; SPI contents are unchanged"
+fu740_guard {
+    riscv set_ebreakm on
+    load_image $fu740_rom $fu740_rom_base bin
+    verify_image $fu740_rom $fu740_rom_base bin
+    riscv set_ebreakm off
+    fu740_resume_all
+    echo "coreboot RAM recovery started; SPI contents are unchanged"
+}
