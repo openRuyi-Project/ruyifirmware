@@ -19,7 +19,9 @@ else
 $(error Unsupported RECOVERY_METHOD=$(RECOVERY_METHOD))
 endif
 
-.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) multiarch source-info prepare prepare-inputs verify package help
+.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) multiarch source-info prepare prepare-inputs verify package help check-settings-abi
+recovery: check-settings-abi
+
 all: normal recovery source-info
 	cd "$(BUILD)"
 	sha256sum $(IMAGE_FILES) > SHA256SUMS
@@ -28,7 +30,10 @@ prepare:
 	git -C "$(ROOT)" submodule sync --recursive
 	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
 
-prepare-inputs:
+check-settings-abi:
+	$(PYTHON) "$(ROOT)/scripts/check-settings-abi.py" "$(SOURCES)" --cross-compile "$(CROSS_COMPILE)"
+
+prepare-inputs: check-settings-abi
 	if [[ -n "$(INPUT_PREPARER)" ]]; then
 	  $(PYTHON) "$(ROOT)/$(INPUT_PREPARER)" "$(SOURCES)" "$(BUILD)" $(INPUT_PREPARER_ARGS)
 	fi
@@ -135,7 +140,7 @@ source-info:
 	printf 'OPENSBI_RISCV_ISA=%s\nEMULATOR_RISCV_ISA=%s\n' "$(RISCV_ISA)" "$(RISCV_ISA)" >> "$(BUILD)/build-options.txt"
 	sed -n 's/^CONFIG_RISCV_ARCH=/COREBOOT_RISCV_ISA=/p' "$(BUILD)/coreboot-normal.config" >> "$(BUILD)/build-options.txt"
 
-verify: all
+verify: all check-settings-abi
 	$(PYTHON) "$(ROOT)/scripts/verify-images.py" "$(BUILD)" --images $(IMAGE_FILES) $(VERIFY_INPUTS) \
 	  --fd "$(FD_FILE)" --fd-size $(FD_SIZE) --dtb "$(DTB_FILE)" --dtb-entry "$(CBFS_DTB_NAME)" \
 	  --compatible "$(DTB_COMPATIBLE)" --address $(PAYLOAD_ADDRESS) \

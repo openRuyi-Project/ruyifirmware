@@ -25,6 +25,7 @@ DEFAULT_MAGIC = int.from_bytes(b'RYCF', 'little')
 DEFAULT_COMMIT = int.from_bytes(b'DONE', 'little')
 DEFAULT_BODY = struct.Struct('<IHHII')
 DEFAULT_RECORD = struct.Struct('<IHHIIII')
+DEFAULT_VERSION = 1
 DEFAULT_MASK = 7
 SLOT_COUNT = 2
 
@@ -107,13 +108,13 @@ def check_layout(image):
 
 
 def encode(values, generation=0):
-    body = DEFAULT_BODY.pack(DEFAULT_MAGIC, 1, DEFAULT_RECORD.size, generation, values)
+    body = DEFAULT_BODY.pack(DEFAULT_MAGIC, DEFAULT_VERSION, DEFAULT_RECORD.size, generation, values)
     return body + struct.pack('<II', zlib.crc32(body), DEFAULT_COMMIT)
 
 
 def decode(data):
     magic, version, size, generation, values, crc, commit = DEFAULT_RECORD.unpack_from(data)
-    if (magic, version, size, commit) != (DEFAULT_MAGIC, 1, DEFAULT_RECORD.size, DEFAULT_COMMIT):
+    if (magic, version, size, commit) != (DEFAULT_MAGIC, DEFAULT_VERSION, DEFAULT_RECORD.size, DEFAULT_COMMIT):
         return None
     if values & ~DEFAULT_MASK or zlib.crc32(data[:DEFAULT_BODY.size]) != crc:
         return None
