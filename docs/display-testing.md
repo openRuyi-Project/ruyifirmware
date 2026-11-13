@@ -1,16 +1,16 @@
-# Capture-card sample results
+# MS2130 capture cards
 
-These results describe two tested samples, not compatibility guarantees.
-Availability depends on the product firmware version. The firmware
-versions were not recorded, so the results do not establish support for
-other units, including units with the same product name or USB VID/PID.
+These two MS2130 cards gave different results. Both report USB ID
+`345f:2130`.
 
-| USB product string | USB VID/PID | Recorded result |
-| --- | --- | --- |
-| UltraSemi USB3 Video | `345f:2130` | **no pass**, reported by the operator |
-| MACROSILICON USB3.0 UHD | `345f:2130` | **pass**, tested on 2026-11-13 |
+| USB name | Result |
+| --- | --- |
+| UltraSemi USB3 Video | No pass |
+| MACROSILICON USB3.0 UHD | Pass |
 
-The MACROSILICON pass result used HiFive Unmatched, an RX550 Baffin
-(`1002:67ff`) and continuous capture. The UltraSemi result is the
-operator's record of the other sample. The underlying firmware or
-implementation difference has not been verified.
+The MACROSILICON card worked with HiFive Unmatched and an RX550 Baffin
+(`1002:67ff`) on 2026-11-13. Capture was kept running during the test.
+
+The result can change with the card's firmware. We did not record the
+firmware versions, so another card with the same name or USB ID may behave
+differently.
