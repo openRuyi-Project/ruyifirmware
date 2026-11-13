@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from image_layout import STAGE_LAYOUTS
+from recovery import MCPU_WAIT
 from firmware_image import (FHT_MAGIC, SIGNATURE_MAGIC, STAGE_TYPES,
                             HEADER, ENTRY, SIGNATURE_BYTES, entries)
 FIRST_STAGE_OFFSET = 0x200
@@ -23,8 +24,6 @@ UART_SYS_INIT_ADDRESS = 0x30008000
 
 def uart_addresses(layout):
     return (UART_SYS_INIT_ADDRESS, layout.scpu_address, layout.wait_address)
-# Four harts wait at a compressed J 0 instruction until JTAG loads coreboot.
-MCPU_WAIT = struct.pack('<H', 0xa001) * 8
 DDR_HEADER = struct.Struct('<4s8s6I')
 
 
