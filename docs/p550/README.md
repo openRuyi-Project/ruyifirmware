@@ -10,6 +10,11 @@ The 8 MiB SPI image fits boards with either 8 MiB or 16 MiB flash.
 Connect the FT4232 console channel C at 115200 baud, 8N1, with no flow
 control. Press F2 for Setup or F12 for the boot menu. A compatible PCIe
 graphics card can provide the graphical console.
+Setup uses an 80x25 character grid on both consoles. HDMI retains the
+selected pixel resolution.
+
+See [capture-card sample results](../display-testing.md) when testing
+through a USB video capture device.
 
 See [PCIe power checks](pcie-power.md) if a card fails to establish a link.
 

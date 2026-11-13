@@ -29,12 +29,17 @@ CPU, memory, PCIe devices and storage.
 
 The serial console uses TTYTERM at 115200 baud, 8N1, without flow control.
 Use a terminal with xterm-compatible keys.
+Setup uses an 80x25 character grid on both consoles. HDMI retains the
+selected pixel resolution.
 
 The release image enables UEFI driver emulation. Change its stored default
 in Platform Settings,
 then save and restart. Supported older AMD cards use the included ARM64
 GOP 1.68. Other cards use their x64 UEFI driver. Older AMD card support is
 experimental.
+
+See [capture-card sample results](../display-testing.md) when testing
+through a USB video capture device.
 
 To update through Setup, copy `normal-spi.bin` and its `SHA256SUMS` to a FAT
 USB drive or the NVMe EFI partition. Open Firmware Update, select the image

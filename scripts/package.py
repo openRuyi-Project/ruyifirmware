@@ -37,7 +37,8 @@ def main():
     for source in sorted((ROOT / 'docs' / board).iterdir()):
         if source.is_file() and source.suffix in ('.md', '.txt'):
             files[source.name] = source
-    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'docs/settings.md', *args.extra):
+    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'docs/settings.md',
+                   ROOT / 'docs/display-testing.md', *args.extra):
         if source.name in files:
             raise ValueError('duplicate package filename: ' + source.name)
         files[source.name] = source
@@ -52,7 +53,9 @@ def main():
     for name, source in files.items():
         shutil.copy2(source, output / name)
     readme = output / 'README.md'
-    readme.write_text(readme.read_text().replace('../linux-issues.md', 'linux-issues.md').replace('../settings.md', 'settings.md'))
+    readme.write_text(readme.read_text().replace('../linux-issues.md', 'linux-issues.md')
+                     .replace('../settings.md', 'settings.md')
+                     .replace('../display-testing.md', 'display-testing.md'))
     defaults = output / 'settings.md'
     text = defaults.read_text()
     for other in ('k3', 'unmatched', 'p550'):

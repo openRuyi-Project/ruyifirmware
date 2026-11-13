@@ -28,6 +28,8 @@ System Information shows the CPU, memory, PCIe devices and storage.
 
 The serial console uses TTYTERM at 115200 baud, 8N1, without flow control.
 Use a terminal with xterm-compatible keys.
+Setup uses an 80x25 character grid on both consoles. HDMI retains the
+selected pixel resolution.
 
 ## CPU modes
 
@@ -61,6 +63,9 @@ then save and restart. To change the initial setting before flashing, use
 Support for older AMD cards is experimental. If a card has no firmware
 picture, use the native K3 display output or the serial console.
 Disabling emulation leaves PCIe graphics to the operating system driver.
+
+See [capture-card sample results](../display-testing.md) when testing
+through a USB video capture device.
 
 The AMD driver is obtained from [AMD](https://www.amd.com/en/resources/support-articles/release-notes/RN-AAR.html).
 For an offline build, put `Arm64Gop_1_68.efi` in a directory and set
