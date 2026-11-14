@@ -175,11 +175,14 @@ def main():
                         require(payload == uart_stages[index] == (build / 'sys-init.bin').read_bytes(),
                                 'SPI and UART system initialization differ')
                     else:
-                        normal_ddr, ecc_ddr = eic7700image.ddr_payloads(payload)
-                        require(normal_ddr == uart_stages[index] == (build / 'ddr-normal.bin').read_bytes(),
-                                'normal DDR payload differs from UART recovery or source')
-                        require(ecc_ddr == (build / 'ddr-ecc.bin').read_bytes(),
-                                'ECC DDR payload differs from source')
+                        eic7700image.check_ddr(payload)
+                        eic7700image.check_ddr(uart_stages[index], recovery=True)
+                        require(payload == (build / 'ddr.bin').read_bytes(),
+                                'SPI DDR payload differs from source')
+                        require(uart_stages[index] == (build / 'ddr-recovery.bin').read_bytes(),
+                                'UART DDR payload differs from source')
+                        require(payload[4:] == uart_stages[index][4:],
+                                'SPI and UART DDR programs differ beyond their entry jump')
                 offset, size, *_ = stages[2]
                 start = offset + eic7700image.SIGNATURE_BYTES
                 rom = rom[start:start + size]

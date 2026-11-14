@@ -16,12 +16,13 @@ CBFS_DTB_NAME := fallback/DTB
 CBFS_REPLACE_DTB := FALSE
 ROM_PACKER := tools/eic7700/image.py
 ROM_PACK_ARGS = --layout $(BOARD) --sys-init "$(BUILD)/sys-init.bin" \
-  --ddr "$(BUILD)/ddr-dispatch.bin"
+  --ddr "$(BUILD)/ddr.bin"
 ROM_RECOVERY_PACK_ARGS = --layout $(BOARD) --sys-init "$(BUILD)/sys-init.bin" \
-  --ddr "$(BUILD)/ddr-normal.bin"
+  --ddr "$(BUILD)/ddr-recovery.bin"
 RECOVERY_METHOD := uart-jtag
 FIRMWARE_IRQ_NODES :=
 INPUT_PREPARER := tools/eic7700/prepare-inputs.py
-INPUT_PREPARER_ARGS = --cross-compile "$(CROSS_COMPILE)"
+INPUT_PREPARER_ARGS = --cross-compile "$(CROSS_COMPILE)" --dtb "$(DTB)"
+prepare-inputs: dtb
 PACKAGE_EXTRA := "$(ROOT)/platforms/p550/openocd.cfg" "$(ROOT)/tools/eic7700/load-ram.tcl" "$(ROOT)/tools/eic7700/upload-ddr.sh" "$(BUILD)/recovery-addresses.tcl" \
-  "$(BUILD)/ddr-LICENSE.txt" "$(BUILD)/ddr-COPYING.txt"
+  "$(BUILD)/ddr-build.json" "$(BUILD)/ddr-LICENSE.txt" "$(BUILD)/ddr-COPYING.txt"

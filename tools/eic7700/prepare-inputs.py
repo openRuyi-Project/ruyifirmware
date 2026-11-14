@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Build the EIC7700 SCPU stage and collect the DDR firmware notices."""
 import argparse
-import json
 from pathlib import Path
 import shutil
 import subprocess
+
+from ddr import build_image
 
 
 def main():
@@ -13,12 +14,14 @@ def main():
     parser.add_argument('sources', type=Path)
     parser.add_argument('build', type=Path)
     parser.add_argument('--cross-compile', required=True)
+    parser.add_argument('--dtb', type=Path, required=True)
     args = parser.parse_args()
     sources, build = args.sources.resolve(), args.build.resolve()
     root = Path(__file__).resolve().parents[2]
     stage = root / 'platforms/eic7700'
     ddr = stage / 'ddr'
     build.mkdir(parents=True, exist_ok=True)
+
     def build_stage(name, inputs, isa='rv32imac'):
         elf = build / (name + '.elf')
         flags = [
@@ -36,18 +39,8 @@ def main():
                         str(elf), str(build / (name + '.bin'))], check=True)
 
     build_stage('sys-init', [stage / 'sys-init.c'])
-    # Keep both vendor programs at their original execution address. The
-    # dispatcher copies the selected program there before entering it.
-    assembly = build / 'ddr-payloads.S'
-    assembly.write_text(''.join(
-        f'.section .ddr.{kind}, "a"\n.incbin {json.dumps(str(path))}\n'
-        for kind, path in (
-            ('normal', ddr / 'ddr_fw.bin'),
-            ('ecc', ddr / 'ddr_fw_ecc.bin'))))
-    build_stage('ddr-dispatch', [stage / 'ddr-entry.S', stage / 'ddr-dispatch.c', assembly],
-                isa='rv32imac_zifencei')
-    for source, name in (('ddr_fw.bin', 'ddr-normal.bin'), ('ddr_fw_ecc.bin', 'ddr-ecc.bin')):
-        shutil.copyfile(ddr / source, build / name)
+    build_image(args.dtb, build / 'ddr.bin',
+                sources / 'edk2-ruyi/EswinPlatformPkg/Include', args.cross_compile)
     for name in ('LICENSE', 'COPYING'):
         notice = ddr / name
         shutil.copyfile(notice, build / ('ddr-' + name + '.txt'))

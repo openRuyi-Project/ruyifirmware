@@ -20,35 +20,23 @@ Reference binary:
 - SHA256: `7d10fd7aa4b0b5924daec199be00ab6d76515115e19f46c69e0b2ad665f7a744`
 
 The reconstructed stage and linker script use Apache-2.0. See `LICENSE`.
-The DDR programs remain binary inputs from [`ddr/`](ddr/README.md).
+The DDR build is described in [`ddr/`](ddr/README.md).
 
 Boards that use these stages call `tools/eic7700/prepare-inputs.py` during
 the build. It writes `sys-init.bin` and `sys-init.elf` to the selected
 build directory.
 
-## DDR selection
+## DDR program
 
-SPI images include the original non-ECC and ECC DDR programs, plus the
-RV32 dispatcher built from `ddr-dispatch.c`. The dispatcher reads two
-CRC-protected policy slots from SPI. An empty policy selects non-ECC DDR.
-It copies the selected program to its original address, `0x59000000`,
-and enters it after synchronizing the instruction stream.
+`tools/eic7700/prepare-inputs.py` also builds the shared
+[DDR program](ddr/README.md). Its SPI entry reads the two CRC-protected
+ECC policy slots. Its UART entry forces non-ECC mode. Both entries use
+the same training and PHY code. The policy format is shared with EDK2
+through `Eic7700BootConfig.h`.
 
-The dispatcher executes above both input programs while copying. It
-restores the BootROM callback ABI before entering the selected program.
-The memory-policy record format is shared with EDK2 through
-`Eic7700BootConfig.h`.
-
-UEFI Setup saves the next-boot ECC policy in the inactive slot. Firmware
-updates preserve both slots. UART recovery always uses non-ECC DDR so it
-can start independently of the saved ECC policy.
-
-coreboot reads the controllers' active ECC mode. It excludes the highest
-one eighth of physical memory when inline ECC is enabled. The resulting
-memory resources are passed to UEFI and the operating system.
-
-The dispatcher selects existing training programs. It does not replace
-their training algorithms or PHY data with source code.
+Board wiring is selected from the firmware DTB's `compatible` property
+at build time. See the [P550 guide](../../docs/p550/README.md) for build
+and ECC configuration instructions.
 
 ## Reference comparison
 

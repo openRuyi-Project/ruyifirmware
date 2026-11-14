@@ -20,28 +20,26 @@ STAGE_ALIGNMENT = 32
 HEX_RECORD_BYTES = 16
 UART_TABLE_ADDRESS = 0x3000c000
 UART_SYS_INIT_ADDRESS = 0x30008000
+DDR_HEADER = struct.Struct('<I8s5I')
 
 
 def uart_addresses(layout):
     return (UART_SYS_INIT_ADDRESS, layout.scpu_address, layout.wait_address)
-DDR_HEADER = struct.Struct('<4s8s6I')
 
 
-def ddr_payloads(data):
-    """Validate the dispatcher layout and return its two vendor programs."""
-    if len(data) < DDR_HEADER.size or len(data) >= 0x100000:
-        raise ValueError('invalid DDR dispatcher size')
-    jump, magic, version, normal, normal_size, ecc, ecc_size, entry = DDR_HEADER.unpack_from(data)
-    instruction = int.from_bytes(jump, 'little')
-    target = ((instruction >> 31) << 20 | ((instruction >> 12) & 255) << 12 |
-              ((instruction >> 20) & 1) << 11 | ((instruction >> 21) & 1023) << 1)
-    if (magic != b'RUYIDDR\0' or version != 1 or instruction & 0xfff != 0x6f
-            or target != entry or normal < DDR_HEADER.size or normal % 0x1000
-            or not normal_size or not ecc_size or ecc % 0x1000
-            or ecc < normal + normal_size or entry < ecc + ecc_size
-            or entry >= len(data) or entry < max(normal_size, ecc_size)):
-        raise ValueError('invalid DDR dispatcher layout')
-    return data[normal:normal + normal_size], data[ecc:ecc + ecc_size]
+def check_ddr(data, recovery=False):
+    """Check the single-program DDR header and the selected boot entry."""
+    if not DDR_HEADER.size <= len(data) < 0x100000:
+        raise ValueError('invalid DDR stage size')
+    instruction, magic, version, flags, spi, uart, size = DDR_HEADER.unpack_from(data)
+    target = ((instruction >> 31) << 20 | ((instruction >> 12) & 0xff) << 12 |
+              ((instruction >> 20) & 0x01) << 11 | ((instruction >> 21) & 0x3ff) << 1)
+    if (magic != b'RUYIDDR\0' or version != 2 or flags & ~0x01 or size != len(data)
+            or instruction & 0xfff != 0x6f or target != (uart if recovery else spi)
+            or not 0x48000 <= spi < len(data) or not 0x48000 <= uart < len(data)
+            or spi == uart or spi % 4 or uart % 4):
+        raise ValueError('invalid DDR stage header')
+    return flags
 
 
 def hex_record(kind, address, data=b''):

@@ -1,0 +1,62 @@
+EIC7700 DDR firmware
+
+The build produces ddr.bin for SPI boot and ddr-recovery.bin for UART
+recovery. They contain the same SCPU program and differ only in their
+first jump instruction. The SPI entry reads the saved ECC setting. The
+UART entry disables ECC. The builder sets NX mode from the board DTB's
+compatible property.
+
+Files
+  common.c: die identity, DDR PLL setup and PHY mailbox.
+  lanes.c: board DQ lane maps.
+  controller.c: memory timing, address maps and ECC settings.
+  controller-state.c: controller transitions before and after training.
+  phy.c and phy-data.inc: PHY configuration and PMU program data.
+  training.c: memory profile selection and training attempts.
+  ecc.c: memory initialization for ECC through DMA.
+  entry.c: SPI and UART boot entries.
+  policy.c: two-slot SPI ECC setting reader.
+  ddr.ld: link addresses and section limits.
+  ../../../tools/eic7700/ddr.py: compiler invocation and image assembly.
+
+Layout
+  The image loads at 0x59000000. Its version-2 RUYIDDR header contains
+  the entry jump, NX flag, both entry offsets and image size.
+
+  Compiled code starts at 0x59048000. The complete image must be smaller
+  than 1 MiB. The compiled code has no writable .data or .bss sections.
+  It uses fixed link addresses. The binary helpers use a global data area
+  below 0x59043000.
+
+  The builder checks the size and SHA256 of ddr_fw.bin before using the
+  helper offsets listed below.
+
+Configuration
+  Die identity and die-to-die (D2D) detection use these inputs:
+
+  Configuration       Die identity read               D2D count input
+  NX off, ECC off     First register                  Detected count
+  NX or ECC enabled   Both registers, use second      0
+
+  NX selects the lane map for 16 GiB LPDDR5. For LPDDR5, a detected D2D
+  connection takes priority over the NX lane map. ECC changes ECCCFG0
+  and ten address-map registers. The memory profile selects the PHY
+  program and configuration tables.
+
+Errors and polling
+  Unsupported data rates and failure of all training attempts return an
+  error. The boot entry also returns an error if ECC initialization or
+  the memory check fails.
+
+  DDR PLL, PHY, controller and DMA polling loops have no timeout.
+  The SPI setting reader limits the number of polls.
+
+Binary helpers
+  entry.c calls these helpers in ddr_fw.bin. Offsets are relative to
+  0x59000000:
+
+  0x1238: register-bank address setup.
+  0xa1c: UART formatting.
+  0xe724: memory check.
+
+  phy-data.inc contains the PHY PMU instructions as data.

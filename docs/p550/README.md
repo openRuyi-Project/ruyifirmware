@@ -60,3 +60,26 @@ Board information and schematics are available from
 
 See [Platform defaults](../settings.md) for settings, optional overrides
 and installation-image configuration.
+
+## Build from source
+
+Install the [build dependencies](https://github.com/openRuyi-Project/ruyifirmware/blob/ruyi/ci/install-deps.sh).
+From the repository root, run:
+
+```sh
+make BOARD=p550 prepare
+make BOARD=p550 TARGET=RELEASE package
+```
+
+The package is written to `dist/p550/RELEASE`. Follow [INSTALL.txt](INSTALL.txt)
+to install it or use UART/JTAG recovery.
+
+The build compiles one DDR program for normal and ECC operation. It reads
+`sifive,hifive-premier-p550` from the firmware DTB's root `compatible`
+property to select P550 memory wiring. The `model` property is a display
+name. ECC is selected at boot from the setting saved in UEFI Setup.
+Each boot trains memory. With ECC enabled, it also initializes memory
+and check bits.
+
+The build retains the supplied PHY microcode and reference code for
+register setup, UART output and memory checks. See [DDR sources and licensing](https://github.com/openRuyi-Project/ruyifirmware/tree/ruyi/platforms/eic7700/ddr).
