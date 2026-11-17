@@ -9,7 +9,7 @@ an override is present. Select Clear UEFI overrides and restart to use
 the stored defaults. Restore Defaults reloads the stored values and
 cancels pending edits.
 
-K3, Unmatched and P550 store defaults in SPI. Saving defaults does not
+K3, Unmatched, P550 and Megrez store defaults in SPI. Saving defaults does not
 require nonvolatile UEFI variables. The storage interface also permits a
 reserved eMMC boot area. A board that uses that storage needs its own
 adapter and reserved layout.
@@ -35,8 +35,7 @@ python3 settings.py normal-spi.bin --default-emulation disabled \
 ```
 
 The command writes the configured image and its SHA256SUMS file. It leaves
-the input image unchanged. The same command works for K3, Unmatched and
-P550. Options that you omit keep their existing default value.
+the input image unchanged. The same command works for all four boards. Options that you omit keep their existing default value.
 
 ## First installation of this format
 
@@ -44,6 +43,7 @@ Old platform records are not migrated. Reflash once with this package.
 Follow your board's installation guide:
 
 - [K3](k3/INSTALL.txt): use BootROM recovery, then `fastboot flash spi`.
+- [Megrez](megrez/INSTALL.txt): copy the SPI image to the USB recovery disk.
 - [Unmatched](unmatched/INSTALL.txt): program the image through JTAG.
 - [P550](p550/INSTALL.txt): use UART/JTAG recovery, then Firmware Update.
   The updater installs the image defaults when no valid records exist.

@@ -9,6 +9,7 @@ import argparse
 from collections import namedtuple
 import hashlib
 import json
+import lzma
 from pathlib import Path
 import struct
 import sys
@@ -18,7 +19,7 @@ import zlib
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'eic7700'))
 from firmware_image import entries, SIGNATURE_BYTES
-from image_layout import DEFAULT_LAYOUTS, STAGE_LAYOUTS
+from image_layout import DEFAULT_LAYOUTS, EIC7700_LAYOUT, STAGE_LAYOUTS
 
 # Current defaults ABI. No legacy records are read or converted.
 DEFAULT_MAGIC = int.from_bytes(b'RYCF', 'little')
@@ -82,29 +83,63 @@ def read_layout(image):
 
 
 
+def eic7700_board(rom, offset):
+    # EIC7700 boards share the same stage addresses and NOR layout.
+    # Read the board selection from coreboot's CBFS config file.
+    while rom[offset:offset + 8] == b'LARCHIVE' and offset + 24 <= len(rom):
+        size, kind, attrs, header = struct.unpack_from('>4I', rom, offset + 8)
+        data = offset + header
+        end = data + size
+        if header < 25 or end > len(rom):
+            break
+        if kind == 0x50 and rom[offset + 24:data].startswith(b'config\0'):
+            config = rom[data:end]
+            if attrs:
+                if (attrs < 31 or attrs + 16 > header or
+                        struct.unpack_from('>4sII', rom, offset + attrs) != (b'BCZL', 16, 1)):
+                    raise ValueError('unsupported CBFS config attributes')
+                try:
+                    decoder = lzma.LZMADecompressor(format=lzma.FORMAT_ALONE, memlimit=16 << 20)
+                    config = decoder.decompress(config, max_length=1 << 20)
+                except lzma.LZMAError as error:
+                    raise ValueError('invalid CBFS config') from error
+                if not decoder.eof:
+                    raise ValueError('truncated or oversized CBFS config')
+            lines = config.splitlines()
+            boards = [name for name, option in (
+                ('p550', b'CONFIG_BOARD_SIFIVE_HIFIVE_PREMIER_P550=y'),
+                ('megrez', b'CONFIG_BOARD_MILKV_MEGREZ=y'),
+            ) if option in lines]
+            if len(boards) == 1:
+                return boards[0]
+            break
+        offset = (end + 63) & ~63
+    raise ValueError('missing or ambiguous EIC7700 board config')
+
+
 def check_layout(image):
     if image[:4] != b'ESWB':
         return read_layout(image)[0]
-    layout = STAGE_LAYOUTS['p550']
+    layout = EIC7700_LAYOUT
     if len(image) != layout.image_bytes:
-        raise ValueError('P550 SPI image must be 8 MiB')
+        raise ValueError('invalid EIC7700 SPI image size')
     records = entries(image, firmware_bytes=layout.firmware_bytes,
                       stage_addresses=(layout.scpu_address, layout.scpu_address, layout.mcpu_address))
     offset, size, _, _ = records[2]
     if size != layout.coreboot_bytes:
-        raise ValueError('invalid P550 coreboot size')
+        raise ValueError('invalid EIC7700 coreboot size')
     rom = image[offset + SIGNATURE_BYTES:offset + SIGNATURE_BYTES + size]
     fmap = 0x20000
     fields = FMAP_HEADER.unpack_from(rom, fmap)
     if fields != (b'__FMAP__', 1, 1, 0, layout.coreboot_bytes, b'FLASH' + bytes(27), 3):
-        raise ValueError('invalid P550 flash map')
+        raise ValueError('invalid EIC7700 flash map')
     required = [(0, 0x20000, b'BOOTBLOCK', 0), (fmap, 0x1000, b'FMAP', 0),
                 (0x21000, 0x3df000, b'COREBOOT', 0)]
     for index, expected in enumerate(required):
         start, length, name, flags = FMAP_AREA.unpack_from(rom, fmap + FMAP_HEADER.size + index * FMAP_AREA.size)
         if (start, length, name.rstrip(b'\0'), flags) != expected:
-            raise ValueError('unsupported P550 settings layout')
-    return 'p550'
+            raise ValueError('unsupported EIC7700 settings layout')
+    return eic7700_board(rom, required[-1][0])
 
 
 def encode(values, generation=0):

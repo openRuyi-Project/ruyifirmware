@@ -15,15 +15,14 @@ class StageLayout:
     mcpu_address: int
     wait_address: int
 
-STAGE_LAYOUTS = {
-    'p550': StageLayout(0x800000, 0x600000, 0x400000,
-                        0x59000000, 0x80000000, 0x80600000),
-}
+EIC7700_LAYOUT = StageLayout(0x800000, 0x600000, 0x400000,
+                        0x59000000, 0x80000000, 0x80600000)
+STAGE_LAYOUTS = dict.fromkeys(('p550', 'megrez'), EIC7700_LAYOUT)
 
 DEFAULT_LAYOUTS = {
     'k3': (0x20d000, 0x1000),
     'unmatched': (0x10000, 0x1000),
-    'p550': (0x720000, 0x10000),
+    **dict.fromkeys(STAGE_LAYOUTS, (0x720000, 0x10000)),
 }
 
 # Coreboot FU740 recovery contract. All consumers use the generated Tcl.

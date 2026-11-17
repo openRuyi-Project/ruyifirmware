@@ -16,6 +16,8 @@ VERIFY_INPUTS += --bootrom recovery-bootrom.bin
 else ifeq ($(RECOVERY_METHOD),uart-jtag)
 IMAGE_FILES += recovery-jtag.rom recovery-ddr.ihex
 VERIFY_INPUTS += --rom recovery-jtag.rom recovery --uart recovery-ddr.ihex
+else ifeq ($(RECOVERY_METHOD),usb-storage)
+VERIFY_INPUTS += --usb-storage
 else
 $(error Unsupported RECOVERY_METHOD=$(RECOVERY_METHOD))
 endif
@@ -122,6 +124,8 @@ recovery: edk2-normal dtb coreboot-recovery
 else ifeq ($(RECOVERY_METHOD),bootrom)
 recovery: normal
 	$(PYTHON) "$(ROOT)/$(ROM_PACKER)" ram --rom "$(BUILD)/normal-spi.bin" --output "$(BUILD)/recovery-bootrom.bin"
+else ifeq ($(RECOVERY_METHOD),usb-storage)
+recovery: normal
 else
 recovery: normal
 	cp "$(BUILD)/normal.rom" "$(BUILD)/recovery-jtag.rom"

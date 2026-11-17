@@ -9,6 +9,36 @@ import subprocess
 from ddr import build_image
 
 
+def boot_cpu_rate(dtb):
+    def get(node, prop, kind='u'):
+        return subprocess.check_output(
+            ['fdtget', '-t', kind, str(dtb), node, prop], text=True).split()
+
+    if 'milkv,megrez' not in get('/', 'compatible', 's'):
+        return 1400000000
+
+    # Use the enabled operating points of the boot CPU. The standard
+    # Megrez supplies 900 mV at reset and supports up to 1.6 GHz.
+    phandle = get('/cpus/cpu@0', 'operating-points-v2')
+    table = '/opp-table-cpu'
+    if phandle != get(table, 'phandle'):
+        raise ValueError('unexpected Megrez CPU operating point table')
+    nodes = subprocess.check_output(['fdtget', '-l', str(dtb), table], text=True)
+    rates = []
+    for name in nodes.split():
+        node = table + '/' + name
+        status = subprocess.check_output(
+            ['fdtget', '-d', 'okay', '-t', 's', str(dtb), node, 'status'], text=True).strip()
+        if status not in ('ok', 'okay'):
+            continue
+        high, low = map(int, get(node, 'opp-hz'))
+        if int(get(node, 'opp-microvolt')[0]) <= 900000:
+            rates.append((high << 32) | low)
+    if not rates or max(rates) != 1600000000:
+        raise ValueError('Megrez requires a 1.6 GHz operating point at its boot voltage')
+    return max(rates)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('sources', type=Path)
@@ -30,6 +60,7 @@ def main():
             '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
             '-fno-ident', '-msmall-data-limit=0', '-mno-relax',
             '-nostdlib', '-static', '-Wall', '-Wextra', '-Werror',
+            f'-DEIC7700_BOOT_CPU_HZ={boot_cpu_rate(args.dtb)}ULL',
             '-I' + str(sources / 'edk2-ruyi/EswinPlatformPkg/Include'),
             '-Wl,--no-relax,--build-id=none,-T,' + str(stage / (name + '.ld')),
         ]

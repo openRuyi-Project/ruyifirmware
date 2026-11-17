@@ -103,6 +103,7 @@ def main():
     recovery = parser.add_mutually_exclusive_group(required=True)
     recovery.add_argument('--bootrom', type=filename)
     recovery.add_argument('--bootblock', type=filename)
+    recovery.add_argument('--usb-storage', action='store_true')
     recovery.add_argument('--uart', type=filename)
     parser.add_argument('--cbfstool', type=Path, required=True)
     parser.add_argument('--address', type=lambda s: int(s, 0), required=True)
@@ -111,7 +112,7 @@ def main():
     build = args.build.resolve()
     options = dict(line.split('=', 1) for line in (build / 'build-options.txt').read_text().splitlines())
     board = options['BOARD']
-    require(board in set(LAYOUT_CHECKS) | {'p550'}, 'unsupported firmware layout')
+    require(board in set(LAYOUT_CHECKS) | set(settings.STAGE_LAYOUTS), 'unsupported firmware layout')
     require(options['EMULATION_ENABLE'] in ('TRUE', 'FALSE'), 'invalid emulation setting')
     names = set(args.images)
     require(len(names) == len(args.images), 'duplicate image filename')
@@ -128,10 +129,13 @@ def main():
         require(board == 'unmatched' and variants == {'normal', 'recovery'}, 'unexpected JTAG recovery inputs')
     if args.uart:
         require(board == 'p550' and variants == {'normal', 'recovery'}, 'unexpected UART recovery inputs')
+    if args.usb_storage:
+        require(board == 'megrez' and variants == {'normal'}, 'unexpected USB recovery inputs')
     recovery_file = args.bootrom or args.bootblock or args.uart
     require(args.fd != args.dtb and recovery_file not in roms and
             not ({args.fd, args.dtb} & (set(roms) | {recovery_file})), 'conflicting image roles')
-    require(set(roms) | {recovery_file} <= names, 'missing ROM or recovery image')
+    recovery_names = {recovery_file} if recovery_file else set()
+    require(set(roms) | recovery_names <= names, 'missing ROM or recovery image')
     require(names <= set(roms) | {recovery_file, args.fd, args.dtb}, 'image has no validation rule')
     checksums = {}
     for line in (build / 'SHA256SUMS').read_text().splitlines():
@@ -154,31 +158,35 @@ def main():
     uart_stages = eic7700image.check_uart(images[args.uart], settings.STAGE_LAYOUTS['p550']) if args.uart else None
     for name, variant in roms.items():
         rom = images[name]
-        if board == 'p550':
+        if board in settings.STAGE_LAYOUTS:
+            layout = settings.STAGE_LAYOUTS[board]
             if variant == 'normal':
-                require(len(rom) == settings.STAGE_LAYOUTS['p550'].image_bytes, 'invalid P550 SPI size')
-                layout = settings.STAGE_LAYOUTS['p550']
+                require(len(rom) == layout.image_bytes, 'invalid EIC7700 SPI size')
                 stages = eic7700image.entries(rom, firmware_bytes=layout.firmware_bytes,
                     stage_addresses=(layout.scpu_address, layout.scpu_address, layout.mcpu_address))
+                require(settings.check_layout(rom) == board, 'embedded board differs')
                 require(settings.inspect(rom) == dict(emulation=enabled, pxe=False, http=False), 'platform defaults mismatch')
-                tail = bytearray(rom[settings.STAGE_LAYOUTS['p550'].firmware_bytes:])
-                defaults, stride = settings.DEFAULT_LAYOUTS['p550']
+                tail = bytearray(rom[layout.firmware_bytes:])
+                defaults, stride = settings.DEFAULT_LAYOUTS[board]
                 for slot in range(settings.SLOT_COUNT):
-                    start = defaults + slot * stride - settings.STAGE_LAYOUTS['p550'].firmware_bytes
+                    start = defaults + slot * stride - layout.firmware_bytes
                     tail[start:start + stride] = b'\xff' * stride
-                require(tail == b'\xff' * len(tail), 'packaged P550 persistent stores must be erased')
+                require(tail == b'\xff' * len(tail), 'packaged EIC7700 persistent stores must be erased')
                 for index in range(2):
                     offset, size, *_ = stages[index]
                     start = offset + eic7700image.SIGNATURE_BYTES
                     payload = rom[start:start + size]
                     if index == 0:
-                        require(payload == uart_stages[index] == (build / 'sys-init.bin').read_bytes(),
+                        require(payload == (build / 'sys-init.bin').read_bytes() and
+                                (uart_stages is None or payload == uart_stages[index]),
                                 'SPI and UART system initialization differ')
                     else:
                         eic7700image.check_ddr(payload)
-                        eic7700image.check_ddr(uart_stages[index], recovery=True)
                         require(payload == (build / 'ddr.bin').read_bytes(),
                                 'SPI DDR payload differs from source')
+                        if uart_stages is None:
+                            continue
+                        eic7700image.check_ddr(uart_stages[index], recovery=True)
                         require(uart_stages[index] == (build / 'ddr-recovery.bin').read_bytes(),
                                 'UART DDR payload differs from source')
                         require(payload[4:] == uart_stages[index][4:],
@@ -186,7 +194,7 @@ def main():
                 offset, size, *_ = stages[2]
                 start = offset + eic7700image.SIGNATURE_BYTES
                 rom = rom[start:start + size]
-            require(len(rom) == settings.STAGE_LAYOUTS['p550'].coreboot_bytes, 'invalid P550 RAM firmware size')
+            require(len(rom) == layout.coreboot_bytes, 'invalid EIC7700 RAM firmware size')
             p550_roms[variant] = rom
         else:
             detected_board, areas = settings.read_layout(rom)
@@ -209,7 +217,7 @@ def main():
             subprocess.run([tool, str(temp / 'rom'), 'extract', '-n', 'fallback/payload', '-U', '-f', str(temp / 'payload')], check=True)
             require((temp / 'dtb').read_bytes() == dtb, 'embedded device tree differs')
             check_payload((temp / 'payload').read_bytes(), fd, args.address)
-    if p550_roms:
+    if args.uart:
         require(p550_roms['normal'] == p550_roms['recovery'], 'SPI and JTAG firmware differ')
     result = {'board': board, 'compatible': args.compatible,
               'images': {name: {'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}

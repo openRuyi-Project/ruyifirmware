@@ -23,8 +23,15 @@ typedef unsigned int u32;
 #define CPU_CLOCK_CONTROL       (SYSCRG + 0x208)
 #define CPU_PLL_LOCKED          (1U << 5)
 #define CPU_PLL_ENABLE          1U
-#define CPU_PLL_CONFIG0_VALUE   0x0e901300U
-#define CPU_PLL_CONFIG1_VALUE   0x0555555aU
+/* The core uses PLL output 2 with a 24 MHz reference and divide by 4. */
+#ifndef EIC7700_BOOT_CPU_HZ
+#define EIC7700_BOOT_CPU_HZ     1400000000ULL
+#endif
+#define CPU_PLL_STEP_HZ         6000000ULL
+#define CPU_PLL_FBDIV           (EIC7700_BOOT_CPU_HZ / CPU_PLL_STEP_HZ)
+#define CPU_PLL_FRAC            (((EIC7700_BOOT_CPU_HZ % CPU_PLL_STEP_HZ) << 24) / CPU_PLL_STEP_HZ)
+#define CPU_PLL_CONFIG0_VALUE   ((u32)(CPU_PLL_FBDIV << 20) | 0x1300U)
+#define CPU_PLL_CONFIG1_VALUE   ((u32)(CPU_PLL_FRAC << 4) | 0x0aU)
 #define CPU_CLOCK_CONTROL_VALUE 0xff800000U
 #define UART                    0x50900000U
 #define UART_LINE_STATUS        0x14

@@ -1,0 +1,19 @@
+Milk-V Megrez installation
+
+Check the extracted package with sha256sum -c SHA256SUMS.
+
+To start firmware from USB, power off the board, select Recovery, connect
+the USB-C debug port to the host and power on. Copy normal-spi.bin to the
+ESWIN-2030 USB disk as a file. Follow startup on the serial console at
+115200 baud, 8N1. The recovery copy starts firmware in RAM. UEFI may
+initialize its variable store on the board during startup.
+
+To install the firmware in SPI, put normal-spi.bin and SHA256SUMS together
+on a FAT USB drive or SD card. Press F2, select Firmware Update and choose
+the image. After verification, power off, select Normal and power on.
+
+USB Fastboot uses the debug USB-C connector in Recovery mode. Start the
+firmware from ESWIN-2030 as described above, then press F9. Check that
+fastboot getvar product reports Milk-V Megrez before running
+fastboot flash spi normal-spi.bin. In Normal mode the switch connects
+USB0 to the Type-A hub. The debug USB-C port still provides the console.
