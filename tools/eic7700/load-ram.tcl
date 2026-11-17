@@ -92,5 +92,5 @@ eic7700_recovery_guard {
     }
     targets eic7700.cpu0
     resume
-    echo "coreboot RAM recovery started; SPI contents are unchanged"
+    echo "coreboot RAM recovery started"
 }

@@ -42,8 +42,9 @@ Recover when firmware does not start
 ------------------------------------
 
 Use this path only when Firmware Update or USB Fastboot is unavailable.
-UART loads the DDR initialization program. JTAG then starts coreboot and
-UEFI from RAM. Neither step writes SPI. Update SPI from the recovered UEFI.
+UART loads the DDR initialization program. JTAG then starts coreboot
+and UEFI from RAM. UEFI checks the SPI variable store as described above.
+Use Firmware Update to install the image in SPI.
 
 1. Prepare the host and identify the two serial ports.
 
@@ -111,7 +112,7 @@ UEFI from RAM. Neither step writes SPI. Update SPI from the recovered UEFI.
 
      RAM image verified. Starting the UART-loaded cache handoff...
      Cache handoff verified on all four harts.
-     coreboot RAM recovery started; SPI contents are unchanged
+     coreboot RAM recovery started
 
    Watch channel C for the UEFI screen. Press F2 for Setup.
    Do not issue an OpenOCD reset after DDR initialization.

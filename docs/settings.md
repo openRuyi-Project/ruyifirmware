@@ -35,7 +35,8 @@ python3 settings.py normal-spi.bin --default-emulation disabled \
 ```
 
 The command writes the configured image and its SHA256SUMS file. It leaves
-the input image unchanged. The same command works for all four boards. Options that you omit keep their existing default value.
+the input image unchanged. Options that you omit keep their existing
+default value.
 
 ## First installation of this format
 
@@ -43,7 +44,8 @@ Old platform records are not migrated. Reflash once with this package.
 Follow your board's installation guide:
 
 - [K3](k3/INSTALL.txt): use BootROM recovery, then `fastboot flash spi`.
-- [Megrez](megrez/INSTALL.txt): copy the SPI image to the USB recovery disk.
+- [Megrez](megrez/INSTALL.txt): start UEFI from the USB recovery disk,
+  then write the image to SPI with Firmware Update or USB Fastboot.
 - [Unmatched](unmatched/INSTALL.txt): program the image through JTAG.
 - [P550](p550/INSTALL.txt): use UART/JTAG recovery, then Firmware Update.
   The updater installs the image defaults when no valid records exist.
