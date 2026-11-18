@@ -8,8 +8,12 @@ For the first update from a P550 image that loaded coreboot at
 0x90000000, use the UART/JTAG recovery files from this package. The
 older UEFI updater rejects the new MCPU image address (0x80000000).
 
-Update SPI firmware
--------------------
+For a first installation or a board that cannot boot Ruyi UEFI, follow
+"Flash SPI from UART/JTAG recovery" below. If Ruyi UEFI already starts,
+you can update directly from Setup or USB Fastboot.
+
+Update from a working Ruyi UEFI
+-------------------------------
 
 Copy normal-spi.bin and SHA256SUMS to the same directory on a FAT
 partition on an SD card or USB drive.
@@ -38,13 +42,13 @@ After confirming the target, write the image:
 Wait for the write and verification to complete. Disconnect the download
 cable, press Esc to leave Fastboot, then reset the board.
 
-Recover when firmware does not start
-------------------------------------
+Flash SPI from UART/JTAG recovery
+---------------------------------
 
-Use this path only when Firmware Update or USB Fastboot is unavailable.
 UART loads the DDR initialization program. JTAG then starts coreboot
-and UEFI from RAM. UEFI checks the SPI variable store as described above.
-Use Firmware Update to install the image in SPI.
+and UEFI from RAM. Before starting, copy normal-spi.bin and SHA256SUMS
+from the same P550 package to one directory on a FAT SD card or USB
+drive. You will use that drive to program SPI in step 5.
 
 1. Prepare the host and identify the two serial ports.
 
@@ -125,9 +129,9 @@ Use Firmware Update to install the image in SPI.
      bootsel-g
 
    With the SoC powered, confirm that the selector reports 0010 for SPI.
-   In UEFI, open Firmware Update and select normal-spi.bin. Keep its
-   SHA256SUMS beside it on the FAT drive. Wait for verification, then
-   restart the board.
+   In UEFI Setup, open Firmware Update on channel C. Select normal-spi.bin
+   on the FAT drive and press Y. Wait for "Firmware written and verified."
+   Press Enter to restart. On channel C, check that F2 opens Setup again.
 
 If recovery stops
 -----------------

@@ -1,27 +1,40 @@
 Milk-V Megrez installation
 
-Check the extracted package with sha256sum -c SHA256SUMS.
+Flash SPI from USB Recovery
+---------------------------
 
-To start firmware from USB, power off the board, select Recovery, connect
-the USB-C debug port to the host and power on. Copy normal-spi.bin to the
-ESWIN-2030 USB disk as a file. Follow startup on the serial console at
-115200 baud, 8N1. The copy starts UEFI in RAM. At startup, UEFI erases
-and reinitializes the SPI variable store if its header is invalid.
+1. Extract the Megrez package. Open a terminal in that directory and run:
 
-To install the firmware in SPI, put normal-spi.bin and SHA256SUMS together
-on a FAT USB drive or SD card. Press F2, select Firmware Update and choose
-the image. After verification, power off, select Normal and power on.
+     sha256sum -c SHA256SUMS
 
-To install through the debug USB-C port, start UEFI from ESWIN-2030
-and press F9. On the host, run:
+2. Power off the board and set the Recovery/Normal switch to Recovery.
+   Connect the debug USB-C port to the host with a data cable and power
+   on. Open the serial console at 115200 baud, 8N1, without flow control.
 
-  fastboot getvar product
+3. When the host shows a disk named ESWIN-2030, copy normal-spi.bin into
+   its root directory as a file. This starts UEFI in RAM. UEFI initializes
+   the SPI variable store if its header is invalid.
 
-If the product is Milk-V Megrez, run:
+4. Press F9 at the UEFI boot prompt. Wait for "USB Fastboot ready" on
+   the serial console. Use the same USB-C cable. On the host, run:
 
-  fastboot flash spi normal-spi.bin
+   If several Fastboot devices are connected, use fastboot devices and
+   add -s SERIAL to both commands to select the Megrez.
 
-Wait for Fastboot to finish writing and verifying the image.
-Power off, select Normal and power on.
-In Normal mode, USB0 serves the Type-A hub and the debug USB-C port
-provides the serial console.
+     fastboot getvar product
+
+   Check that the product is Milk-V Megrez, then run:
+
+     fastboot flash spi normal-spi.bin
+
+5. Wait for "SPI firmware verified" and OKAY. Power off, set the switch
+   to Normal and power on. Check that F2 opens Setup on the serial
+   console. In Normal mode, USB0 serves the Type-A hub. The debug USB-C
+   port still provides the serial console.
+
+Update from UEFI Setup
+----------------------
+
+Put normal-spi.bin and SHA256SUMS together on a FAT SD card or USB
+drive. Press F2, open Firmware Update, select normal-spi.bin and press Y.
+Wait for "Firmware written and verified." Then restart in Normal mode.

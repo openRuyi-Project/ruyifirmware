@@ -1,19 +1,51 @@
-PINE64 StarPro64
+PINE64 StarPro64 installation
 
-Check the extracted files with sha256sum -c SHA256SUMS. Use the UART0
-console at 115200 baud, 8N1. The package contains one normal-spi.bin
-for SPI and temporary BootROM USB boot.
+Flash SPI from USB Recovery
+---------------------------
 
-For a first USB boot, power off and set SW1 to ROM USB boot
-(BOOT_SEL[3:0] = 0011). USB0 is the Type-A port on J2 wired to pins
-2 and 3 on the schematic. Use a data connection that isolates host
-VBUS from board VBUS. Power the board from its own supply. When the
-ESWIN-2030 recovery disk appears, copy normal-spi.bin to it as a file.
+1. Extract the StarPro64 package. Open a terminal in that directory and
+   run:
 
-To install from UEFI, place normal-spi.bin and SHA256SUMS on a FAT
-SD card or USB drive. Open Firmware Update in Setup and select the
-image. After verification, power off, select SPI boot (0010) and power
-on. UEFI may initialize an invalid variable store during startup.
+     sha256sum -c SHA256SUMS
 
-The microSD connector has no card detect signal. Insert the card before
-power-on for UEFI boot. The eMMC bus supports up to HS200 at 1.8 V.
+2. Power off the board. Use the numbers and ON mark printed on SW1.
+   Switch 1 sets the least significant bit. ON sets a bit to zero.
+
+     Boot mode       SW1-1   SW1-2   SW1-3   SW1-4   BOOT_SEL[3:0]
+     USB Recovery    OFF     OFF     ON      ON      0011
+     SPI             ON      OFF     ON      ON      0010
+
+   Select USB Recovery. Connect the host to the lower blue Type-A port
+   on J2, closest to the PCB. Use a USB data cable that isolates VBUS
+   between the host and the board. Power the board from its own supply.
+   Follow UART0 at 115200 baud, 8N1, without flow control.
+
+3. When the host shows a disk named ESWIN-2030, copy normal-spi.bin into
+   its root directory as a file. This starts UEFI in RAM. UEFI may
+   initialize an invalid SPI variable store during startup.
+
+4. Press F9 at the UEFI boot prompt. Wait for "USB Fastboot ready" on
+   UART0. Keep the download cable connected. On the host, run:
+
+   If several Fastboot devices are connected, use fastboot devices and
+   add -s SERIAL to both commands to select the StarPro64.
+
+     fastboot getvar product
+
+   Check that the product is Pine64 StarPro64, then run:
+
+     fastboot flash spi normal-spi.bin
+
+5. Wait for "SPI firmware verified" and OKAY. Power off, disconnect the
+   download cable and set SW1 to SPI. Power on. Check that F2 opens
+   Setup on UART0.
+
+Update from UEFI Setup
+----------------------
+
+Put normal-spi.bin and SHA256SUMS together on a FAT SD card or USB drive.
+Insert a microSD card before power-on because the slot has no card
+detect signal. Press F2, open Firmware Update, select normal-spi.bin and
+press Y. Wait for "Firmware written and verified." Then restart in SPI mode.
+
+The eMMC bus supports up to HS200 at 1.8 V.
