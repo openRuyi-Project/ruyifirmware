@@ -98,7 +98,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(WAIT_WORDS[:5],
                          (0x6f, 0xfc000073, 0x0330000f, 0x100f, 0x100073))
         self.assertLessEqual(layout.wait_address + len(MCPU_WAIT), values['work_area_address'])
-        self.assertLessEqual(values['work_area_address'] + values['work_area_size'], layout.mcpu_address)
+        self.assertLessEqual(layout.mcpu_address + layout.coreboot_bytes, layout.wait_address)
         with self.assertRaises(ValueError):
             recovery_values(replace(layout, mcpu_address=layout.wait_address + 16))
 

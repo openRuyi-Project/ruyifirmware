@@ -4,6 +4,10 @@ HiFive Premier P550: installation and recovery
 Use one complete DEBUG or RELEASE package. Run host commands from its
 extracted directory. Check its files with sha256sum -c SHA256SUMS.
 
+For the first update from a P550 image that loaded coreboot at
+0x90000000, use the UART/JTAG recovery files from this package. The
+older UEFI updater rejects the new MCPU image address (0x80000000).
+
 Update SPI firmware
 -------------------
 

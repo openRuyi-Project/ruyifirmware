@@ -38,32 +38,32 @@ def check(sources, cross_compile):
         fields.append((field + ' offset', f'OFFSET_OF (RUYI_SETTINGS_RECORD, {field})', offset))
     for flag, value in [('EMULATION', 1), ('PXE', 2), ('HTTP', 4)]:
         fields.append((flag, 'RUYI_SETTING_' + flag, value))
-    for board, prefix in [('k3', 'K3'), ('unmatched', 'UNMATCHED'), ('p550', 'P550')]:
+    for board, prefix in [('k3', 'K3'), ('unmatched', 'UNMATCHED'), *[(board, 'EIC7700') for board in STAGE_LAYOUTS]]:
         for suffix, value in zip(('OFFSET', 'STRIDE'), settings.DEFAULT_LAYOUTS[board]):
             fields.append((board + ' ' + suffix, prefix + '_DEFAULTS_' + suffix, value))
     layout = STAGE_LAYOUTS['p550']
     fields += [
-        ('P550 firmware area', 'P550_FIRMWARE_BYTES', layout.firmware_bytes),
-        ('P550 NVRAM start', 'P550_NV_OFFSET', layout.firmware_bytes),
+        ('EIC7700 firmware area', 'EIC7700_FIRMWARE_BYTES', layout.firmware_bytes),
+        ('EIC7700 NVRAM start', 'EIC7700_NV_OFFSET', layout.firmware_bytes),
         ('EIC7700 ROM load', 'EIC7700_ROM_BUFFER', layout.mcpu_address),
     ]
     # A recognizable record also checks target byte order and field widths.
     source = '''#include <Uefi.h>
 #include <Library/PlatformSettingsLib.h>
-#include <Library/PremierP550NvFlashLib.h>
+#include <Library/Eic7700NvFlashLib.h>
 #include <IndustryStandard/K3FirmwareDefaults.h>
 #include <IndustryStandard/UnmatchedFirmwareDefaults.h>
-#include <IndustryStandard/P550FirmwareDefaults.h>
+#include <IndustryStandard/Eic7700FirmwareDefaults.h>
 #include <IndustryStandard/Eic7700BootConfig.h>
 #include "soc/addressmap.h"
 __attribute__((section(".abi"), used))
 const UINT32 Contract[] = {
 '''
     source += ',\n'.join(expr for _, expr, _ in fields) + '\n};\n'
-    source += '''STATIC_ASSERT (P550_NV_OFFSET + NV_TOTAL_SIZE <= EIC7700_BOOT_CONFIG_OFFSET,
+    source += '''STATIC_ASSERT (EIC7700_NV_OFFSET + NV_TOTAL_SIZE <= EIC7700_BOOT_CONFIG_OFFSET,
   "NVRAM overlaps early boot settings");
 STATIC_ASSERT (EIC7700_BOOT_CONFIG_OFFSET + EIC7700_BOOT_CONFIG_SLOT_SIZE *
-  EIC7700_BOOT_CONFIG_SLOT_COUNT <= P550_DEFAULTS_OFFSET,
+  EIC7700_BOOT_CONFIG_SLOT_COUNT <= EIC7700_DEFAULTS_OFFSET,
   "Early boot settings overlap platform defaults");
 '''
     encoded = settings.encode(settings.DEFAULT_MASK, generation=0x12345678)

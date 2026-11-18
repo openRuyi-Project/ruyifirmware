@@ -23,8 +23,8 @@ WORK_AREA_SIZE = 0x2000
 
 def recovery_values(layout):
     work = layout.wait_address + WORK_AREA_OFFSET
-    if not (layout.wait_address + len(MCPU_WAIT) <= work and
-            work + WORK_AREA_SIZE <= layout.mcpu_address):
+    if not (layout.mcpu_address + layout.coreboot_bytes <= layout.wait_address and
+            layout.wait_address + len(MCPU_WAIT) <= work):
         raise ValueError('recovery work area overlaps the handoff or ROM')
     return dict(rom_address=layout.mcpu_address, rom_size=layout.coreboot_bytes,
                 wait_address=layout.wait_address,

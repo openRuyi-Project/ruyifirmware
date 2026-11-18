@@ -17,7 +17,7 @@ class StageLayout:
 
 STAGE_LAYOUTS = {
     'p550': StageLayout(0x800000, 0x600000, 0x400000,
-                        0x59000000, 0x90000000, 0x80000000),
+                        0x59000000, 0x80000000, 0x80600000),
 }
 
 DEFAULT_LAYOUTS = {

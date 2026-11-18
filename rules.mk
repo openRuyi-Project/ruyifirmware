@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MIT
 EDK_FD := $(EDK_WORK)/Build/$(EDK_PLATFORM)/$(TARGET)_GCC/FV/$(FD_FILE)
 DTB := $(BUILD)/$(DTB_FILE)
-SBI_FIRMWARE := $(BUILD)/opensbi/platform/generic/firmware/fw_dynamic.elf
+SBI_BUILD ?= $(BUILD)/opensbi
+SBI_FIRMWARE := $(SBI_BUILD)/platform/generic/firmware/fw_dynamic.elf
 COREBOOT_TARGETS := coreboot-normal
 IMAGE_FILES := normal-spi.bin
 VERIFY_INPUTS := --rom normal-spi.bin normal
@@ -61,7 +62,7 @@ edk2-normal: multiarch
 	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
 
 opensbi-normal:
-	$(MAKE) -C "$(SOURCES)/opensbi" O="$(BUILD)/opensbi" PLATFORM=generic \
+	$(MAKE) -C "$(SOURCES)/opensbi" O="$(SBI_BUILD)" PLATFORM=generic \
 	  CROSS_COMPILE="$(CROSS_COMPILE)" PLATFORM_RISCV_ISA="$(RISCV_ISA)" \
 	  FW_TEXT_START=$(SBI_ADDRESS) FW_OPTIONS=$(SBI_FW_OPTIONS) -j$(JOBS)
 
