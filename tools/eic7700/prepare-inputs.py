@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Build the EIC7700 SCPU stage and collect the DDR firmware notices."""
 import argparse
+from collections import deque
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,32 +11,42 @@ from ddr import build_image
 
 
 def boot_cpu_rate(dtb):
-    def get(node, prop, kind='u'):
+    def get(node, prop, kind='u', default=None):
+        options = [] if default is None else ['-d', default]
         return subprocess.check_output(
-            ['fdtget', '-t', kind, str(dtb), node, prop], text=True).split()
+            ['fdtget', *options, '-t', kind, str(dtb), node, prop], text=True).split()
 
-    if 'milkv,megrez' not in get('/', 'compatible', 's'):
-        return 1400000000
+    def children(node):
+        names = subprocess.check_output(['fdtget', '-l', str(dtb), node], text=True)
+        return [node.rstrip('/') + '/' + name for name in names.split()]
 
-    # Use the enabled operating points of the boot CPU. The standard
-    # Megrez supplies 900 mV at reset and supports up to 1.6 GHz.
-    phandle = get('/cpus/cpu@0', 'operating-points-v2')
-    table = '/opp-table-cpu'
-    if phandle != get(table, 'phandle'):
-        raise ValueError('unexpected Megrez CPU operating point table')
-    nodes = subprocess.check_output(['fdtget', '-l', str(dtb), table], text=True)
+    def enabled(node):
+        return get(node, 'status', 's', default='okay') in (['okay'], ['ok'])
+
+    handle, = get('/cpus/cpu@0', 'operating-points-v2')
+    pending = deque(['/'])
+    while pending:
+        table = pending.popleft()
+        if get(table, 'phandle', default='') == [handle]:
+            break
+        pending.extend(children(table))
+    else:
+        raise ValueError('boot CPU operating-points-v2 phandle not found')
+
+    if not enabled(table) or 'operating-points-v2' not in get(table, 'compatible', 's'):
+        raise ValueError('boot CPU operating point table is disabled or incompatible')
+
     rates = []
-    for name in nodes.split():
-        node = table + '/' + name
-        status = subprocess.check_output(
-            ['fdtget', '-d', 'okay', '-t', 's', str(dtb), node, 'status'], text=True).strip()
-        if status not in ('ok', 'okay'):
+    for node in children(table):
+        props = subprocess.check_output(['fdtget', '-p', str(dtb), node], text=True).split()
+        if 'opp-hz' not in props or not enabled(node):
+            continue
+        if 'turbo-mode' in props or 'opp-supported-hw' in props:
             continue
         high, low = map(int, get(node, 'opp-hz'))
-        if int(get(node, 'opp-microvolt')[0]) <= 900000:
-            rates.append((high << 32) | low)
-    if not rates or max(rates) != 1600000000:
-        raise ValueError('Megrez requires a 1.6 GHz operating point at its boot voltage')
+        rates.append((high << 32) | low)
+    if not rates:
+        raise ValueError('no enabled normal CPU operating point')
     return max(rates)
 
 
