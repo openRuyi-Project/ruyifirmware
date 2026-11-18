@@ -14,9 +14,9 @@ require nonvolatile UEFI variables. The storage interface also permits a
 reserved eMMC boot area. A board that uses that storage needs its own
 adapter and reserved layout.
 
-CPU mode and DDR ECC appear only on boards that support those settings.
-Their values are read during early startup. Changing them also requires
-a restart.
+CPU mode and DDR ECC appear on boards that support them. Save and
+restart to apply a change. On P550, CPU mode controls whether Linux
+can select 1.6 GHz on a board modified for a fixed 0.9 V CPU supply.
 
 ## Configure an installation image
 
