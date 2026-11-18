@@ -49,3 +49,20 @@ detect signal. Press F2, open Firmware Update, select normal-spi.bin and
 press Y. Wait for "Firmware written and verified." Then restart in SPI mode.
 
 The eMMC bus supports up to HS200 at 1.8 V.
+
+Check JTAG with a CH347
+----------------------
+
+Use ch347.cfg for an external CH347 connected to EIC7700 JTAG0.
+Power the board and use an OpenOCD build with the ch347 driver.
+From the extracted directory, replace SERIAL with your adapter's USB
+serial number and run:
+
+  openocd -f ch347.cfg -c 'adapter serial SERIAL' \
+    -c 'init; scan_chain; shutdown'
+
+Look for TAP eic7700.cpu with ID 0x00000913. The configuration selects
+four MCPU harts and uses system bus access at 469 kHz. For an
+interactive debug session, omit the final -c argument:
+
+  openocd -f ch347.cfg -c 'adapter serial SERIAL'

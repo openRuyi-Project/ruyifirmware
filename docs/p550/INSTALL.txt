@@ -59,6 +59,10 @@ drive. You will use that drive to program SPI in step 5.
      sha256sum -c SHA256SUMS
      ls -l /dev/serial/by-id/
 
+   The packaged openocd.cfg selects the onboard FT4232. The EIC7700
+   target definition is in eic7700.cfg. For an external CH347 on
+   JTAG0, use ch347.cfg.
+
    The FT4232 provides these interfaces:
 
      Channel A / interface 0   EIC7700 JTAG, used by OpenOCD

@@ -15,3 +15,13 @@ FIRMWARE_IRQ_NODES :=
 INPUT_PREPARER := tools/eic7700/prepare-inputs.py
 INPUT_PREPARER_ARGS = --cross-compile "$(CROSS_COMPILE)" --dtb "$(DTB)"
 prepare-inputs: dtb
+
+EIC7700_OPENOCD_DIR := $(ROOT)/tools/eic7700/openocd
+EIC7700_OPENOCD_PRESET ?= ch347
+PACKAGE_COMMON += "$(EIC7700_OPENOCD_DIR)/eic7700.cfg" "$(EIC7700_OPENOCD_DIR)/ch347.cfg" "$(BUILD)/openocd.cfg"
+
+# Keep the openocd.cfg entry point used by existing package commands.
+package: $(BUILD)/openocd.cfg
+$(BUILD)/openocd.cfg: $(EIC7700_OPENOCD_DIR)/$(EIC7700_OPENOCD_PRESET).cfg
+	mkdir -p "$(BUILD)"
+	cp "$<" "$@"
