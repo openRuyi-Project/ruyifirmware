@@ -24,6 +24,11 @@ Platform Settings controls UEFI driver emulation, PXE and HTTP Boot.
 Release images enable emulation and disable PXE and HTTP Boot.
 Save changes and restart to apply them.
 
+The standard P550 boots at 1.4 GHz. On boards modified for a fixed
+0.9 V CPU supply, select **Allow 1.6 GHz in Linux** under **Platform
+Settings > CPU mode**. Save and restart. This adds the 1.6 GHz operating
+point to the Linux device tree. The board supplies the CPU voltage.
+
 DDR ECC is disabled by default. Enable it in Platform Settings.
 Save the change. Restart the board to apply it.
 Inline ECC reserves one eighth of DDR capacity for
