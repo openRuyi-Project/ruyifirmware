@@ -2,9 +2,10 @@ EIC7700 DDR firmware
 
 The build produces ddr.bin for SPI boot and ddr-recovery.bin for UART
 recovery. They contain the same SCPU program and differ only in their
-first jump instruction. The SPI entry reads the saved ECC setting. The
-UART entry disables ECC. The builder sets NX mode from the board DTB's
-compatible property.
+first jump instruction. Normal SPI boot reads the saved ECC setting.
+USB recovery uses the same image and initializes DDR with ECC disabled.
+The UART recovery entry also disables ECC. The builder sets NX mode
+from the board DTB's compatible property.
 
 Files
   common.c: die identity, DDR PLL setup and PHY mailbox.

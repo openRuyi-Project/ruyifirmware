@@ -21,8 +21,9 @@ Flash SPI from USB Recovery
    Follow UART0 at 115200 baud, 8N1, without flow control.
 
 3. When the host shows a disk named ESWIN-2030, copy normal-spi.bin into
-   its root directory as a file. This starts UEFI in RAM. UEFI may
-   initialize an invalid SPI variable store during startup.
+   its root directory as a file. USB Recovery trains memory with ECC
+   disabled. The next SPI boot uses the saved ECC setting. UEFI starts
+   in RAM and may initialize an invalid SPI variable store.
 
 4. Press F9 at the UEFI boot prompt. Wait for "USB Fastboot ready" on
    UART0. Keep the download cable connected. On the host, run:

@@ -29,10 +29,10 @@ build directory.
 ## DDR program
 
 `tools/eic7700/prepare-inputs.py` also builds the shared
-[DDR program](ddr/README.md). Its SPI entry reads the two CRC-protected
-ECC policy slots. Its UART entry forces non-ECC mode. Both entries use
-the same training and PHY code. The policy format is shared with EDK2
-through `Eic7700BootConfig.h`.
+[DDR program](ddr/README.md). Normal SPI boot reads the saved ECC setting
+from two CRC-protected slots. USB and UART recovery train memory with ECC
+disabled and skip the policy slots. The policy format is shared with
+EDK2 through `Eic7700BootConfig.h`.
 
 Board wiring is selected from the firmware DTB's `compatible` property
 at build time. See the [P550 guide](../../docs/p550/README.md) for build

@@ -12,8 +12,9 @@ Flash SPI from USB Recovery
    on. Open the serial console at 115200 baud, 8N1, without flow control.
 
 3. When the host shows a disk named ESWIN-2030, copy normal-spi.bin into
-   its root directory as a file. This starts UEFI in RAM. UEFI initializes
-   the SPI variable store if its header is invalid.
+   its root directory as a file. USB Recovery trains memory with ECC
+   disabled. The next SPI boot uses the saved ECC setting. UEFI starts
+   in RAM and initializes the SPI variable store if its header is invalid.
 
 4. Press F9 at the UEFI boot prompt. Wait for "USB Fastboot ready" on
    the serial console. Use the same USB-C cable. On the host, run:

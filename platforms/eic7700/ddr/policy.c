@@ -13,6 +13,10 @@ typedef unsigned char u8;
 #define SPI_CLOCK		(SYSCRG + 0x104)
 #define SPI_CONFIG_CLOCK	(SYSCRG + 0x108)
 #define AON_BUS_CLOCK		(SYSCRG + 0x1e4)
+#define BOOT_SEL_STAT		(SYSCRG + 0x33c)
+#define BOOT_MEDIA_MASK		0x03
+#define BOOT_MEDIA_UART		0x00
+#define BOOT_MEDIA_USB		0x03
 #define SPI_RESET		(SYSCRG + 0x490)
 #define CLOCK_ENABLE		BIT(31)
 #define BUS_ENABLE		BIT(29)
@@ -83,6 +87,10 @@ int ddr_ecc_policy(void)
 	u32 records[EIC7700_BOOT_CONFIG_SLOT_COUNT][EIC7700_BOOT_CONFIG_BYTES / sizeof(u32)];
 	unsigned int selected = EIC7700_BOOT_CONFIG_SLOT_COUNT;
 	int status = -1;
+	u32 media = read32(BOOT_SEL_STAT) & BOOT_MEDIA_MASK;
+
+	if (media == BOOT_MEDIA_USB || media == BOOT_MEDIA_UART)
+		return 0;
 
 	clocks[0] = read32(SPI_CLOCK);
 	clocks[1] = read32(SPI_CONFIG_CLOCK);
