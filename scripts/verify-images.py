@@ -130,7 +130,7 @@ def main():
     if args.uart:
         require(board == 'p550' and variants == {'normal', 'recovery'}, 'unexpected UART recovery inputs')
     if args.usb_storage:
-        require(board == 'megrez' and variants == {'normal'}, 'unexpected USB recovery inputs')
+        require(board in ('megrez', 'starpro64') and variants == {'normal'}, 'unexpected USB recovery inputs')
     recovery_file = args.bootrom or args.bootblock or args.uart
     require(args.fd != args.dtb and recovery_file not in roms and
             not ({args.fd, args.dtb} & (set(roms) | {recovery_file})), 'conflicting image roles')

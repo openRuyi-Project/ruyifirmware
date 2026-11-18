@@ -12,3 +12,4 @@ then follow the guide for your board:
 - [SiFive HiFive Unmatched](docs/unmatched/README.md)
 - [SiFive HiFive Premier P550](docs/p550/README.md)
 - [Milk-V Megrez](docs/megrez/README.md)
+- [PINE64 StarPro64](docs/starpro64/README.md)

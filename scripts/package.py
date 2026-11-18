@@ -58,7 +58,7 @@ def main():
                      .replace('../display-testing.md', 'display-testing.md'))
     defaults = output / 'settings.md'
     text = defaults.read_text()
-    for other in ('k3', 'unmatched', 'p550', 'megrez'):
+    for other in ('k3', 'unmatched', 'p550', 'megrez', 'starpro64'):
         target = 'INSTALL.txt' if other == board else (
             'https://github.com/openRuyi-Project/ruyifirmware/blob/ruyi/docs/'
             + other + '/INSTALL.txt')

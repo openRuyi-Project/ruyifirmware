@@ -31,6 +31,7 @@ def board_config(dtb):
     profiles = {
         'sifive,hifive-premier-p550': False,
         'milkv,megrez': False,
+        'pine64,starpro64': False,
         'milkv,megrez-nx': True,
     }
     matched = next((name for name in compatibles if name in profiles), None)

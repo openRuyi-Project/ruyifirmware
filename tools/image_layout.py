@@ -17,7 +17,7 @@ class StageLayout:
 
 EIC7700_LAYOUT = StageLayout(0x800000, 0x600000, 0x400000,
                         0x59000000, 0x80000000, 0x80600000)
-STAGE_LAYOUTS = dict.fromkeys(('p550', 'megrez'), EIC7700_LAYOUT)
+STAGE_LAYOUTS = dict.fromkeys(('p550', 'megrez', 'starpro64'), EIC7700_LAYOUT)
 
 DEFAULT_LAYOUTS = {
     'k3': (0x20d000, 0x1000),

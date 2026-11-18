@@ -109,6 +109,7 @@ def eic7700_board(rom, offset):
             boards = [name for name, option in (
                 ('p550', b'CONFIG_BOARD_SIFIVE_HIFIVE_PREMIER_P550=y'),
                 ('megrez', b'CONFIG_BOARD_MILKV_MEGREZ=y'),
+                ('starpro64', b'CONFIG_BOARD_PINE64_STARPRO64=y'),
             ) if option in lines]
             if len(boards) == 1:
                 return boards[0]
