@@ -6,6 +6,9 @@ SBI_FIRMWARE := $(SBI_BUILD)/platform/generic/firmware/fw_dynamic.elf
 COREBOOT_TARGETS := coreboot-normal
 IMAGE_FILES := normal-spi.bin
 VERIFY_INPUTS := --rom normal-spi.bin normal
+ifeq ($(BOARD),sg2042)
+include $(ROOT)/platforms/sg2042/build.mk
+else
 ifeq ($(RECOVERY_METHOD),jtag)
 COREBOOT_TARGETS += coreboot-recovery
 IMAGE_FILES += recovery-jtag.rom recovery-bootblock.bin $(FD_FILE) $(DTB_FILE)
@@ -105,6 +108,8 @@ verify: all check-settings-abi
 	  --fd "$(FD_FILE)" --fd-size $(FD_SIZE) --dtb "$(DTB_FILE)" --dtb-entry "$(CBFS_DTB_NAME)" \
 	  --compatible "$(DTB_COMPATIBLE)" --address $(PAYLOAD_ADDRESS) \
 	  --cbfstool "$(BUILD)/coreboot-normal/cbfstool"
+
+endif
 
 .PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) source-info prepare verify package help
 

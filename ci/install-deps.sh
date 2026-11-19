@@ -9,6 +9,6 @@ apt-get install -y --no-install-recommends \
     binutils-riscv64-linux-gnu bc bison flex pkg-config cmake \
     gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf \
     libssl-dev libelf-dev libfdt-dev zlib1g-dev uuid-dev \
-    device-tree-compiler acpica-tools nasm xz-utils \
+    device-tree-compiler mtools acpica-tools nasm xz-utils \
     python3 python3-yaml python3-pyelftools python3-packaging \
     python3-jsonschema python3-pykwalify
