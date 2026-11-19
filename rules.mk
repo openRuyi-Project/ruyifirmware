@@ -22,16 +22,8 @@ else
 $(error Unsupported RECOVERY_METHOD=$(RECOVERY_METHOD))
 endif
 
-.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) multiarch source-info prepare prepare-inputs verify package help check-settings-abi
+.PHONY: multiarch prepare-inputs check-settings-abi
 recovery: check-settings-abi
-
-all: normal recovery source-info
-	cd "$(BUILD)"
-	sha256sum $(IMAGE_FILES) > SHA256SUMS
-
-prepare:
-	git -C "$(ROOT)" submodule sync --recursive
-	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
 
 check-settings-abi:
 	$(PYTHON) "$(ROOT)/scripts/check-settings-abi.py" "$(SOURCES)" --cross-compile "$(CROSS_COMPILE)"
@@ -40,46 +32,6 @@ prepare-inputs: check-settings-abi
 	if [[ -n "$(INPUT_PREPARER)" ]]; then
 	  $(PYTHON) "$(ROOT)/$(INPUT_PREPARER)" "$(SOURCES)" "$(BUILD)" $(INPUT_PREPARER_ARGS)
 	fi
-
-multiarch:
-	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
-	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE \
-	  MAU_SUPPORTS_AARCH64_BINS=YES MAU_RISCV_ISA="$(RISCV_ISA)" CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
-
-edk2-normal: multiarch
-	mkdir -p "$(EDK_WORK)/Conf" "$(EDK_WORK)/X64EmulatorBin"
-	$(PYTHON) "$(SOURCES)/edk2-ruyi/tools/fetch-amd-gop.py" "$(EDK_WORK)/AmdGop"
-	cp "$(MAU_EFI)" "$(MAU_DEPEX)" "$(EDK_WORK)/X64EmulatorBin/"
-	$(MAKE) -C "$(SOURCES)/edk2/BaseTools/Source/C" -j$(JOBS)
-	export WORKSPACE="$(EDK_WORK)"
-	export PACKAGES_PATH="$(EDK_WORK):$(SOURCES):$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
-	export GCC_RISCV64_PREFIX="$(CROSS_COMPILE)" PYTHON_COMMAND="$(PYTHON)"
-	export CONF_PATH="$(EDK_WORK)/Conf"
-	unset EDK_TOOLS_PATH
-	set +u
-	source "$(SOURCES)/edk2/edksetup.sh"
-	set -u
-	build -a RISCV64 -p "$(EDK_DSC)" -t GCC -b $(TARGET) -n $(JOBS) \
-	  -D X64EMU_ENABLE=TRUE -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
-	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
-
-opensbi-normal:
-	$(MAKE) -C "$(SOURCES)/opensbi" O="$(SBI_BUILD)" PLATFORM=generic \
-	  CROSS_COMPILE="$(CROSS_COMPILE)" PLATFORM_RISCV_ISA="$(RISCV_ISA)" \
-	  FW_TEXT_START=$(SBI_ADDRESS) FW_OPTIONS=$(SBI_FW_OPTIONS) -j$(JOBS)
-
-$(COREBOOT_TARGETS): coreboot-%: opensbi-normal
-	mkdir -p "$(BUILD)"
-	sed '/^CONFIG_DEFAULT_CONSOLE_LOGLEVEL_[0-9]=/d' "$(SOURCES)/coreboot/configs/$(COREBOOT_CONFIG)" > "$(BUILD)/coreboot-$*.config"
-	printf 'CONFIG_DEFAULT_CONSOLE_LOGLEVEL_%s=y\n' "$(COREBOOT_LOGLEVEL)" >> "$(BUILD)/coreboot-$*.config"
-	printf 'CONFIG_OPENSBI_BLOB_PATH="%s"\n' "$(SBI_FIRMWARE)" >> "$(BUILD)/coreboot-$*.config"
-	if [[ "$*" == recovery ]]; then
-	  printf '%s\n' '$(COREBOOT_RECOVERY_OPTION)' >> "$(BUILD)/coreboot-$*.config"
-	fi
-	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
-	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 olddefconfig
-	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
-	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 -j$(JOBS)
 
 dtb:
 	mkdir -p "$(BUILD)"
@@ -153,6 +105,61 @@ verify: all check-settings-abi
 	  --fd "$(FD_FILE)" --fd-size $(FD_SIZE) --dtb "$(DTB_FILE)" --dtb-entry "$(CBFS_DTB_NAME)" \
 	  --compatible "$(DTB_COMPATIBLE)" --address $(PAYLOAD_ADDRESS) \
 	  --cbfstool "$(BUILD)/coreboot-normal/cbfstool"
+
+.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) source-info prepare verify package help
+
+all: normal recovery source-info
+	cd "$(BUILD)"
+	sha256sum $(IMAGE_FILES) > SHA256SUMS
+
+prepare:
+	git -C "$(ROOT)" submodule sync --recursive
+	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
+
+.PHONY: multiarch
+X64EMU_ENABLE ?= TRUE
+
+multiarch:
+	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
+	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE \
+	  MAU_SUPPORTS_AARCH64_BINS=YES MAU_RISCV_ISA="$(RISCV_ISA)" CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
+
+edk2-normal: $(if $(filter TRUE,$(X64EMU_ENABLE)),multiarch)
+	mkdir -p "$(EDK_WORK)/Conf" "$(EDK_WORK)/X64EmulatorBin"
+	if [[ "$(X64EMU_ENABLE)" == TRUE ]]; then
+	  $(PYTHON) "$(SOURCES)/edk2-ruyi/tools/fetch-amd-gop.py" "$(EDK_WORK)/AmdGop"
+	  cp "$(MAU_EFI)" "$(MAU_DEPEX)" "$(EDK_WORK)/X64EmulatorBin/"
+	fi
+	$(MAKE) -C "$(SOURCES)/edk2/BaseTools/Source/C" -j$(JOBS)
+	export WORKSPACE="$(EDK_WORK)"
+	export PACKAGES_PATH="$(EDK_WORK):$(SOURCES):$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
+	export GCC_RISCV64_PREFIX="$(CROSS_COMPILE)" PYTHON_COMMAND="$(PYTHON)"
+	export CONF_PATH="$(EDK_WORK)/Conf"
+	unset EDK_TOOLS_PATH
+	set +u
+	source "$(SOURCES)/edk2/edksetup.sh"
+	set -u
+	build -a RISCV64 -p "$(EDK_DSC)" -t GCC -b $(TARGET) -n $(JOBS) \
+	  -D X64EMU_ENABLE=$(X64EMU_ENABLE) -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
+	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
+
+opensbi-normal:
+	$(MAKE) -C "$(SOURCES)/opensbi" O="$(SBI_BUILD)" PLATFORM=generic \
+	  CROSS_COMPILE="$(CROSS_COMPILE)" PLATFORM_RISCV_ISA="$(RISCV_ISA)" \
+	  FW_TEXT_START=$(SBI_ADDRESS) FW_OPTIONS=$(SBI_FW_OPTIONS) -j$(JOBS)
+
+$(COREBOOT_TARGETS): coreboot-%: opensbi-normal
+	mkdir -p "$(BUILD)"
+	sed '/^CONFIG_DEFAULT_CONSOLE_LOGLEVEL_[0-9]=/d' "$(SOURCES)/coreboot/configs/$(COREBOOT_CONFIG)" > "$(BUILD)/coreboot-$*.config"
+	printf 'CONFIG_DEFAULT_CONSOLE_LOGLEVEL_%s=y\n' "$(COREBOOT_LOGLEVEL)" >> "$(BUILD)/coreboot-$*.config"
+	printf 'CONFIG_OPENSBI_BLOB_PATH="%s"\n' "$(SBI_FIRMWARE)" >> "$(BUILD)/coreboot-$*.config"
+	if [[ "$*" == recovery ]]; then
+	  printf '%s\n' '$(COREBOOT_RECOVERY_OPTION)' >> "$(BUILD)/coreboot-$*.config"
+	fi
+	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
+	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 olddefconfig
+	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
+	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 -j$(JOBS)
 
 package: verify
 	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(DIST)" $(PACKAGE_COMMON) $(PACKAGE_EXTRA)

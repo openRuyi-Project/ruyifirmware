@@ -16,6 +16,8 @@ def main():
     parser.add_argument('build', type=Path)
     parser.add_argument('output', type=Path)
     parser.add_argument('extra', nargs='*', type=Path)
+    parser.add_argument('--board-docs-only', action='store_true',
+                        help='omit the Ruyi settings and display guides and the AMD GOP manifest')
     args = parser.parse_args()
     build, output = args.build.resolve(), args.output.resolve()
     checks = json.loads((build / 'image-checks.json').read_text())
@@ -32,13 +34,16 @@ def main():
             raise ValueError(f'{name} changed after verification')
         files[name] = source
     for name in ('image-checks.json', 'source-revisions.txt', 'build-options.txt',
-                 'submodules.txt', 'toolchain.txt', 'amd-gop.json'):
+                 'submodules.txt', 'toolchain.txt'):
         files[name] = build / name
     for source in sorted((ROOT / 'docs' / board).iterdir()):
         if source.is_file() and source.suffix in ('.md', '.txt'):
             files[source.name] = source
-    for source in (ROOT / 'docs/linux-issues.md', ROOT / 'docs/settings.md',
-                   ROOT / 'docs/display-testing.md', *args.extra):
+    guides = []
+    if not args.board_docs_only:
+        files['amd-gop.json'] = build / 'amd-gop.json'
+        guides = [ROOT / 'docs/linux-issues.md', ROOT / 'docs/settings.md', ROOT / 'docs/display-testing.md']
+    for source in (*guides, *args.extra):
         if source.name in files:
             raise ValueError('duplicate package filename: ' + source.name)
         files[source.name] = source
@@ -57,13 +62,14 @@ def main():
                      .replace('../settings.md', 'settings.md')
                      .replace('../display-testing.md', 'display-testing.md'))
     defaults = output / 'settings.md'
-    text = defaults.read_text()
-    for other in ('k3', 'unmatched', 'p550', 'megrez', 'starpro64'):
-        target = 'INSTALL.txt' if other == board else (
-            'https://github.com/openRuyi-Project/ruyifirmware/blob/ruyi/docs/'
-            + other + '/INSTALL.txt')
-        text = text.replace('](' + other + '/INSTALL.txt)', '](' + target + ')')
-    defaults.write_text(text)
+    if 'settings.md' in files:
+        text = defaults.read_text()
+        for other in ('k3', 'unmatched', 'p550', 'megrez', 'starpro64'):
+            target = 'INSTALL.txt' if other == board else (
+                'https://github.com/openRuyi-Project/ruyifirmware/blob/ruyi/docs/'
+                + other + '/INSTALL.txt')
+            text = text.replace('](' + other + '/INSTALL.txt)', '](' + target + ')')
+        defaults.write_text(text)
     (output / 'build-revision.txt').write_text(subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True))
     names = set(files) | {'build-revision.txt'}
     unexpected = {p.name for p in output.iterdir()} - names - {'SHA256SUMS'}
