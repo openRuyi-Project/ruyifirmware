@@ -56,7 +56,7 @@ See [Linux issues](../linux-issues.md) if the kernel reports a firmware
 framebuffer conflict with the PCIe host bridge.
 
 The firmware uses the P550 device tree from openRuyi Linux
-`ruyi/v7.3.5-1`. The fan requires a DWC PWM driver that supports normal
+`ruyi/v7.3.5-3`. The fan requires a DWC PWM driver that supports normal
 polarity.
 
 Board information and schematics are available from
