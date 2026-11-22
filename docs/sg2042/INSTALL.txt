@@ -1,7 +1,7 @@
 SOPHGO SG2042 boot images
 
-Use openRuyi Linux ruyi/v7.3.5-3 or a kernel with the RISC-V EFI
-runtime MMIO fix and support for keeping the firmware SPI clock enabled for EFI variable
+Use openRuyi Linux ruyi/v7.3.5-5 or a kernel with the RISC-V EFI
+runtime MMIO fix and SG2042 protected-clocks support for EFI variable
 services. Linux uses its native RTC driver to access the hardware clock.
 
 Use recovery-sd.img for an initial boot from an SD card. The 64 MiB

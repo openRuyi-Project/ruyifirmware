@@ -55,9 +55,10 @@ accessible in the UEFI Shell but do not appear as automatic boot entries.
 See [Linux issues](../linux-issues.md) if the kernel reports a firmware
 framebuffer conflict with the PCIe host bridge.
 
-The firmware uses the P550 device tree from openRuyi Linux
-`ruyi/v7.3.5-3`. The fan requires a DWC PWM driver that supports normal
-polarity.
+The firmware package lists its Linux device tree revision in
+`source-revisions.txt`. The P550 device tree uses `pwm-fan` to control
+the fan and `eic7700-fan` to read its speed. The operating system needs
+both drivers and a DWC PWM driver that supports normal polarity.
 
 Board information and schematics are available from
 [SiFive](https://www.sifive.com/boards/hifive-premier-p550).

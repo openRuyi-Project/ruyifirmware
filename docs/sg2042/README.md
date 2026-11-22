@@ -23,10 +23,11 @@ With driver emulation enabled, the firmware can load an x64 UEFI GOP
 from the controller's Option ROM if the ROM contains one.
 **TODO:** integrate a native SM768 GOP.
 
-## Pioneer RTC
+## RTC
 
-UEFI reads the Pioneer DS1307 once at boot on I2C0 at address `0x68`.
-UEFI initializes its
+On Pioneer and both EVBs, UEFI reads the hardware clock once at boot on
+I2C0, at address `0x68`. Pioneer uses a DS1307. Both EVBs use a
+PT7C4307WE with the same calendar interface. UEFI initializes its
 virtual clock from that reading. Later EFI time reads and writes use
 the virtual clock. Linux can read and set the physical clock through
 `rtc-ds1307`. Use the native RTC to change the time for the next boot.
@@ -36,6 +37,11 @@ does not respond, the virtual clock starts at the last time saved by EFI SetTime
 has been saved, it starts at the firmware build time. Check the RTC driver name in
 `/sys/class/rtc/rtc*/name` to distinguish the physical clock from
 `rtc-efi`.
+
+I2C0 remains available to Linux on all three boards. On EVB v1 it also
+serves the SMBus pins on PCIe slot 0. On EVB v2 it also serves the
+ISL68127 voltage regulator. The EVB schematics label the RTC as U2001
+and the I2C level shifter as U2003.
 
 ## Pioneer devices
 
