@@ -5,6 +5,8 @@
 RISC-V firmware with broad OS support and a focus on openRuyi.
 The project uses open-source components wherever possible.
 
+<br clear="right">
+
 ## Supported boards
 
 Download the [release package](https://github.com/openRuyi-Project/ruyifirmware/releases)
