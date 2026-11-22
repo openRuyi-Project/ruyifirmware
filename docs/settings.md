@@ -13,7 +13,7 @@ K3, Unmatched, P550, Megrez and StarPro64 store defaults in two SPI
 records. They can save defaults even without nonvolatile UEFI variables.
 
 SG2042 stores defaults in the `PlatformDefaults` UEFI variable. Firmware
-Update preserves it in the Ruyi variable partition. With RAM-backed
+Update preserves it in the `ruyi-vars` partition on SPI1. With RAM-backed
 variables, changes last until reset.
 
 CPU mode and DDR ECC appear on boards that support them. Save and

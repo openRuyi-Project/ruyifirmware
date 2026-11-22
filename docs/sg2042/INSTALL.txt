@@ -27,18 +27,11 @@ To install or update SPI firmware, copy normal-spi.bin and its matching
 SHA256SUMS to a FAT filesystem. Press F2, open Firmware Update and select
 the .bin file. Setup verifies its checksum and board layout. It writes and
 reads back the boot files on SPI1 before committing the SCP partition table.
-The update preserves the UEFI variable store, including the PlatformDefaults
-variable saved by Setup, and data outside those regions.
+The update preserves UEFI variables on SPI1 and data outside those regions.
+If an earlier firmware stored your settings on SPI0, record the boot order
+and Setup settings before updating. Enter them again after the update.
 
-The firmware SPI controller is reserved in the device tree passed to Linux,
-including when the board boots from SD. Linux normally leaves it unbound.
-UEFI also reserves SPI0 if it uses the variable partition on that controller.
-Manual servicing requires exclusive access to the controller.
-
-Both SPI controllers share an AHB clock. UEFI runtime variable access
-requires that clock to stay enabled. The SG2042 clock fix keeps it on
-when firmware reserves a controller that uses it.
-
-SD boot uses persistent variables if the onboard flash contains the Ruyi
-variable partition. With the original flash layout, variables stay in RAM
+UEFI reserves SPI1 for firmware and protects its shared AHB clock,
+including on SD boots. Linux can use a separate flash connected to SPI0.
+If SPI1 lacks a usable Ruyi variable partition, UEFI uses RAM variables
 for that boot. Booting from SD does not install the image to SPI.

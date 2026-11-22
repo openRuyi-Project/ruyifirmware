@@ -45,7 +45,7 @@ and set a valid date and time before updating the firmware.
 | Two 2.5 GbE ports | The native RTL8125B SNP driver uses each controller's own MAC address. EDK2 provides PXE and HTTP boot. |
 | Display card | MultiArchUefiPkg can run supported EFI graphics drivers. A card with only a legacy video BIOS needs a compatible GOP to provide a UEFI display. |
 | DS1307 RTC | UEFI owns I2C0 and provides runtime time services. Linux reads and sets the clock through `rtc-efi`. |
-| SPI flash | Setup updates SPI1. UEFI prefers the `ruyi-vars` partition on SPI1 and can use an existing one on SPI0. |
+| SPI flash | Setup updates SPI1. UEFI stores persistent variables in `ruyi-vars` on SPI1. SPI0 is available to Linux. |
 | Serial console and power control | OpenSBI provides the debug console, reset and shutdown services. The SCP and board MCU handle power sequencing. |
 
 Linux uses the handed-off DT for GPIO, fan control, sensors and the MCU.
