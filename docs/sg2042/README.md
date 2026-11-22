@@ -23,15 +23,19 @@ With driver emulation enabled, the firmware can load an x64 UEFI GOP
 from the controller's Option ROM if the ROM contains one.
 **TODO:** integrate a native SM768 GOP.
 
-## Pioneer kernel compatibility
+## Pioneer RTC
 
-Before booting this firmware on Pioneer, install and boot openRuyi Linux
-`ruyi/v7.3.5-3` or a kernel with both the RISC-V EFI runtime MMIO fix and
-the SG2042 reserved-device clock fix. Older kernels can panic when
-`rtc-efi` first reads the clock. Enable `CONFIG_RTC_DRV_EFI` for Linux
-access to the DS1307. The driver registers the RTC after its first
-successful time read. If the clock has stopped, check its backup supply
-and set a valid date and time before updating the firmware.
+UEFI reads the Pioneer DS1307 once at boot on I2C0 at address `0x68`.
+UEFI initializes its
+virtual clock from that reading. Later EFI time reads and writes use
+the virtual clock. Linux can read and set the physical clock through
+`rtc-ds1307`. Use the native RTC to change the time for the next boot.
+
+If the hardware clock is stopped, the date is invalid, or the device
+does not respond, the virtual clock starts at the last time saved by EFI SetTime. If no time
+has been saved, it starts at the firmware build time. Check the RTC driver name in
+`/sys/class/rtc/rtc*/name` to distinguish the physical clock from
+`rtc-efi`.
 
 ## Pioneer devices
 
@@ -44,7 +48,7 @@ and set a valid date and time before updating the firmware.
 | microSD and eMMC module | The SG2042 driver configures the two DWC MSHC hosts. The SD and eMMC drivers use PIO for boot I/O. |
 | Two 2.5 GbE ports | The native RTL8125B SNP driver uses each controller's own MAC address. EDK2 provides PXE and HTTP boot. |
 | Display card | MultiArchUefiPkg can run supported EFI graphics drivers. A card with only a legacy video BIOS needs a compatible GOP to provide a UEFI display. |
-| DS1307 RTC | UEFI owns I2C0 and provides runtime time services. Linux reads and sets the clock through `rtc-efi`. |
+| DS1307 RTC | UEFI samples the calendar at boot. Linux has native access to the RTC. |
 | SPI flash | Setup updates SPI1. UEFI stores persistent variables in `ruyi-vars` on SPI1. SPI0 is available to Linux. |
 | Serial console and power control | OpenSBI provides the debug console, reset and shutdown services. The SCP and board MCU handle power sequencing. |
 
