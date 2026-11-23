@@ -8,7 +8,7 @@ See [EC updates](EC.txt) for embedded-controller firmware.
 
 ## Build
 
-On Debian 13 (trixie), run:
+On Ubuntu 26.04, run:
 
 ```sh
 git clone --recurse-submodules https://github.com/openRuyi-Project/ruyifirmware.git

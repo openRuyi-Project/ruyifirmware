@@ -8,7 +8,7 @@ Use RELEASE for normal operation and DEBUG for more diagnostic output.
 
 ## Build
 
-On Debian 13 (trixie), run from the repository directory:
+On Ubuntu 26.04, run from the repository directory:
 
 ```sh
 sudo bash ci/install-deps.sh

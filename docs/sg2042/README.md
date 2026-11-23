@@ -66,9 +66,18 @@ The Pioneer Box can also contain an Intel X540-T2. A card with an x64
 UEFI network Option ROM can use the firmware emulator. **TODO:** add
 Intel's native XGigUndiDxe driver for the X540.
 
-Build the firmware from the repository root:
+## Build
+
+Build on Ubuntu 26.04 with the distribution's RISC-V GCC. In release
+`20261122`, its `libgcc.a` supplied a byte-swap routine that used
+`rev8`. The C920 trapped on that instruction while reading the first
+CBFS file header. The build now links coreboot with its own integer
+helpers and omits the toolchain's `libgcc.a` from the coreboot stages.
+
+From the repository root, run:
 
 ```sh
+sudo bash ci/install-deps.sh
 make BOARD=sg2042 prepare
 make BOARD=sg2042 TARGET=RELEASE package
 ```

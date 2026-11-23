@@ -164,6 +164,7 @@ $(COREBOOT_TARGETS): coreboot-%: opensbi-normal
 	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
 	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 olddefconfig
 	CROSS_COMPILE_riscv="$(COREBOOT_CROSS_COMPILE)" $(MAKE) -C "$(SOURCES)/coreboot" \
+	  COMPILER_RT_bootblock= COMPILER_RT_romstage= COMPILER_RT_ramstage= \
 	  obj="$(BUILD)/coreboot-$*" DOTCONFIG="$(BUILD)/coreboot-$*.config" UPDATED_SUBMODULES=1 -j$(JOBS)
 
 package: verify
