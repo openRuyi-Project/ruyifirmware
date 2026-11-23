@@ -8,6 +8,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-26.04
+    container: debian:trixie
     strategy:
       fail-fast: false
       matrix:
@@ -17,12 +18,16 @@ jobs:
       BOARD: ${{ matrix.board }}
       TARGET: ${{ matrix.target }}
     steps:
+      - name: Install Git for submodule checkout
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           submodules: recursive
       - name: Install build dependencies
-        run: sudo bash ci/install-deps.sh
+        run: bash ci/install-deps.sh
       - name: Build firmware
         run: make BOARD="$BOARD" TARGET="$TARGET" package
       - name: Archive firmware

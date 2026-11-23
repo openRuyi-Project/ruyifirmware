@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# Run as root on Ubuntu 26.04.
+# Run as root on Debian 13 (trixie).
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
