@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: MIT
 EIC7700_OPENOCD_PRESET := p550-ft4232
 include $(ROOT)/platforms/eic7700/common.mk
-EDK_PLATFORM := SiFivePremierP550
-EDK_DSC := EswinPlatformPkg/PremierP550/PremierP550.dsc
-FD_FILE := PREMIERP550.fd
 COREBOOT_CONFIG := config.sifive_hifive_premier_p550
 DTB_SOURCE := arch/riscv/boot/dts/eswin/eic7700-hifive-premier-p550.dts
 DTB_FILE := hifive-premier-p550.dtb

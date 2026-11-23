@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board: [k3, unmatched, p550, megrez, starpro64, sg2042]
+        board: [k3, unmatched, eic7700, sg2042]
         target: [DEBUG, RELEASE]
     env:
       BOARD: ${{ matrix.board }}
@@ -28,22 +28,23 @@ jobs:
       - name: Build firmware
         run: make BOARD="$BOARD" TARGET="$TARGET" package
       - name: Archive firmware
-        id: archive
         shell: bash
         run: |
           version="${GITHUB_SHA:0:12}"
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             version="${GITHUB_REF_NAME//\//-}"
           fi
-          name="ruyifirmware-${BOARD}-${version}-${TARGET,,}"
-          mv "dist/$BOARD/$TARGET" "dist/$name"
-          tar -cJf "dist/$name.tar.xz" -C dist "$name"
-          printf 'path=%s\n' "dist/$name.tar.xz" >> "$GITHUB_OUTPUT"
+          for dir in dist/*/"$TARGET"; do
+            board="$(basename "$(dirname "$dir")")"
+            name="ruyifirmware-${board}-${version}-${TARGET,,}"
+            mv "$dir" "dist/$name"
+            tar -cJf "dist/$name.tar.xz" -C dist "$name"
+          done
       - name: Upload firmware
         uses: actions/upload-artifact@v7
         with:
           name: ruyifirmware-${{ matrix.board }}-${{ matrix.target }}
-          path: ${{ steps.archive.outputs.path }}
+          path: dist/*.tar.xz
           if-no-files-found: error
 
   release:

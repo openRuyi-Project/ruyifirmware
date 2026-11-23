@@ -76,8 +76,12 @@ make BOARD=p550 prepare
 make BOARD=p550 TARGET=RELEASE package
 ```
 
-The package is written to `dist/p550/RELEASE`. Follow [INSTALL.txt](INSTALL.txt)
-to install it or use UART/JTAG recovery.
+To build packages for P550, Megrez and StarPro64 together, run
+`make BOARD=eic7700 TARGET=RELEASE package`. The three images use one
+EDK II payload. Coreboot passes the board's device tree to UEFI.
+
+Each package is written to `dist/<board>/RELEASE`. For P550 installation
+and UART/JTAG recovery, follow [INSTALL.txt](INSTALL.txt).
 
 The build compiles one DDR program for normal and ECC operation. It reads
 `sifive,hifive-premier-p550` from the firmware DTB's root `compatible`

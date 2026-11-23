@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MIT
-EDK_EXTRA_FLAGS :=
-RISCV_ISA := rv64gc_zba_zbb
-FD_SIZE := 0x400000
+include $(ROOT)/platforms/eic7700.mk
+ifneq ($(EIC7700_SHARED_BUILD),)
+EDK_WORK := $(EIC7700_SHARED_BUILD)/edk2
+endif
 COREBOOT_CROSS_COMPILE ?= $(CROSS_COMPILE)
 SBI_ADDRESS := 0x80800000
 SBI_BUILD := $(BUILD)/opensbi-$(SBI_ADDRESS)

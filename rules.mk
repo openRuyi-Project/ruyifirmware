@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: MIT
 EDK_FD := $(EDK_WORK)/Build/$(EDK_PLATFORM)/$(TARGET)_GCC/FV/$(FD_FILE)
+ifeq ($(BOARD),eic7700)
+all verify package: edk2-normal
+	for board in p550 megrez starpro64; do
+	  $(MAKE) BOARD="$$board" BUILD="$(BUILD)/$$board" DIST="$(abspath $(DIST))/$$board/$(TARGET)" \
+	    EIC7700_SHARED_BUILD="$(abspath $(BUILD))" $@
+	done
+else
 DTB := $(BUILD)/$(DTB_FILE)
 SBI_BUILD ?= $(BUILD)/opensbi
 SBI_FIRMWARE := $(SBI_BUILD)/platform/generic/firmware/fw_dynamic.elf
@@ -111,54 +118,11 @@ verify: all check-settings-abi
 
 endif
 
-.PHONY: all normal recovery dtb edk2-normal opensbi-normal $(COREBOOT_TARGETS) source-info prepare verify package help
+.PHONY: normal recovery dtb opensbi-normal $(COREBOOT_TARGETS) source-info
 
 all: normal recovery source-info
 	cd "$(BUILD)"
 	sha256sum $(IMAGE_FILES) > SHA256SUMS
-
-export FIRMWARE_VER
-
-.PHONY: prepare-edk2-version
-prepare-edk2-version:
-	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
-	  $(PYTHON) "$(ROOT)/scripts/edk2-version.py" --fetch "$(SOURCES)/edk2"
-	fi
-
-prepare:
-	git -C "$(ROOT)" submodule sync --recursive
-	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
-	$(MAKE) prepare-edk2-version
-
-.PHONY: multiarch
-X64EMU_ENABLE ?= TRUE
-
-multiarch:
-	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
-	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE \
-	  MAU_SUPPORTS_AARCH64_BINS=YES MAU_RISCV_ISA="$(RISCV_ISA)" CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
-
-edk2-normal: $(if $(filter TRUE,$(X64EMU_ENABLE)),multiarch)
-	mkdir -p "$(EDK_WORK)/Conf" "$(EDK_WORK)/X64EmulatorBin"
-	if [[ "$(X64EMU_ENABLE)" == TRUE ]]; then
-	  $(PYTHON) "$(SOURCES)/edk2-ruyi/tools/fetch-amd-gop.py" "$(EDK_WORK)/AmdGop"
-	  cp "$(MAU_EFI)" "$(MAU_DEPEX)" "$(EDK_WORK)/X64EmulatorBin/"
-	fi
-	$(MAKE) -C "$(SOURCES)/edk2/BaseTools/Source/C" -j$(JOBS)
-	export WORKSPACE="$(EDK_WORK)"
-	export PACKAGES_PATH="$(EDK_WORK):$(SOURCES):$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
-	export GCC_RISCV64_PREFIX="$(CROSS_COMPILE)" PYTHON_COMMAND="$(PYTHON)"
-	export CONF_PATH="$(EDK_WORK)/Conf"
-	unset EDK_TOOLS_PATH
-	set +u
-	source "$(SOURCES)/edk2/edksetup.sh"
-	set -u
-	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
-	  FIRMWARE_VER=$$($(PYTHON) "$(ROOT)/scripts/edk2-version.py" "$(SOURCES)/edk2")
-	fi
-	build -a RISCV64 -p "$(EDK_DSC)" -t GCC -b $(TARGET) -n $(JOBS) \
-	  -D "FIRMWARE_VER=$$FIRMWARE_VER" -D X64EMU_ENABLE=$(X64EMU_ENABLE) -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
-	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
 
 opensbi-normal:
 	$(MAKE) -C "$(SOURCES)/opensbi" O="$(SBI_BUILD)" PLATFORM=generic \
@@ -181,10 +145,63 @@ $(COREBOOT_TARGETS): coreboot-%: opensbi-normal
 
 package: verify
 	$(PYTHON) "$(ROOT)/scripts/package.py" "$(BUILD)" "$(DIST)" $(PACKAGE_COMMON) $(PACKAGE_EXTRA)
+endif
+
+export FIRMWARE_VER
+
+.PHONY: prepare-edk2-version
+prepare-edk2-version:
+	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
+	  $(PYTHON) "$(ROOT)/scripts/edk2-version.py" --fetch "$(SOURCES)/edk2"
+	fi
+
+prepare:
+	git -C "$(ROOT)" submodule sync --recursive
+	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
+	$(MAKE) prepare-edk2-version
+
+.PHONY: multiarch
+X64EMU_ENABLE ?= TRUE
+
+multiarch:
+	$(MAKE) -C "$(SOURCES)/MultiArchUefiPkg" EDK2_DIR="$(SOURCES)/edk2" \
+	  MAU_BUILD_DIR="$(BUILD)/multiarch" TARGET=$(TARGET) JOBS=$(JOBS) MAU_DYNAMIC_POLICY=TRUE \
+	  MAU_SUPPORTS_AARCH64_BINS=YES MAU_RISCV_ISA="$(RISCV_ISA)" CROSS_COMPILE="$(CROSS_COMPILE)" PYTHON="$(PYTHON)"
+
+ifneq ($(EIC7700_SHARED_BUILD),)
+edk2-normal:
+	mkdir -p "$(BUILD)"
+	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
+else
+edk2-normal: $(if $(filter TRUE,$(X64EMU_ENABLE)),multiarch)
+	mkdir -p "$(EDK_WORK)/Conf" "$(EDK_WORK)/X64EmulatorBin"
+	if [[ "$(X64EMU_ENABLE)" == TRUE ]]; then
+	  $(PYTHON) "$(SOURCES)/edk2-ruyi/tools/fetch-amd-gop.py" "$(EDK_WORK)/AmdGop"
+	  cp "$(MAU_EFI)" "$(MAU_DEPEX)" "$(EDK_WORK)/X64EmulatorBin/"
+	fi
+	$(MAKE) -C "$(SOURCES)/edk2/BaseTools/Source/C" -j$(JOBS)
+	export WORKSPACE="$(EDK_WORK)"
+	export PACKAGES_PATH="$(EDK_WORK):$(SOURCES):$(SOURCES)/edk2-ruyi:$(SOURCES)/edk2-platforms:$(SOURCES)/edk2"
+	export GCC_RISCV64_PREFIX="$(CROSS_COMPILE)" PYTHON_COMMAND="$(PYTHON)"
+	export CONF_PATH="$(EDK_WORK)/Conf"
+	unset EDK_TOOLS_PATH
+	set +u
+	source "$(SOURCES)/edk2/edksetup.sh"
+	set -u
+	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
+	  FIRMWARE_VER=$$($(PYTHON) "$(ROOT)/scripts/edk2-version.py" "$(SOURCES)/edk2")
+	fi
+	build -a RISCV64 -p "$(EDK_DSC)" -t GCC -b $(TARGET) -n $(JOBS) \
+	  -D "FIRMWARE_VER=$$FIRMWARE_VER" -D X64EMU_ENABLE=$(X64EMU_ENABLE) -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
+	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
+endif
+
+.PHONY: all verify package edk2-normal prepare help
 
 help:
 	printf '%s\n' 'make BOARD=<board> TARGET=RELEASE package' \
-	  'Boards: $(BOARDS)' \
+	  'Boards: $(filter-out eic7700,$(BOARDS))' \
+	  'BOARD=eic7700 packages P550, Megrez and StarPro64 with one UEFI build.' \
 	  'TARGET=DEBUG enables diagnostic logging.' \
 	  'Builds: build/<board>/<target>; packages: dist/<board>/<target>' \
 	  'PXE and HTTP boot are configured in UEFI Setup.' \

@@ -11,7 +11,11 @@ BOARD ?= k3
 TARGET ?= RELEASE
 BUILD ?= $(ROOT)/build/$(BOARD)/$(TARGET)
 BUILD := $(abspath $(BUILD))
+ifeq ($(BOARD),eic7700)
+DIST ?= $(ROOT)/dist
+else
 DIST ?= $(ROOT)/dist/$(BOARD)/$(TARGET)
+endif
 JOBS ?= 2
 PYTHON ?= python3
 CROSS_COMPILE ?= riscv64-linux-gnu-
