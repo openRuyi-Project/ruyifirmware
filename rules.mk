@@ -117,9 +117,18 @@ all: normal recovery source-info
 	cd "$(BUILD)"
 	sha256sum $(IMAGE_FILES) > SHA256SUMS
 
+export FIRMWARE_VER
+
+.PHONY: prepare-edk2-version
+prepare-edk2-version:
+	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
+	  $(PYTHON) "$(ROOT)/scripts/edk2-version.py" --fetch "$(SOURCES)/edk2"
+	fi
+
 prepare:
 	git -C "$(ROOT)" submodule sync --recursive
 	git -C "$(ROOT)" submodule update --init --recursive --depth 1 --jobs $(JOBS)
+	$(MAKE) prepare-edk2-version
 
 .PHONY: multiarch
 X64EMU_ENABLE ?= TRUE
@@ -144,8 +153,11 @@ edk2-normal: $(if $(filter TRUE,$(X64EMU_ENABLE)),multiarch)
 	set +u
 	source "$(SOURCES)/edk2/edksetup.sh"
 	set -u
+	if [[ -z "$${FIRMWARE_VER:-}" ]]; then
+	  FIRMWARE_VER=$$($(PYTHON) "$(ROOT)/scripts/edk2-version.py" "$(SOURCES)/edk2")
+	fi
 	build -a RISCV64 -p "$(EDK_DSC)" -t GCC -b $(TARGET) -n $(JOBS) \
-	  -D X64EMU_ENABLE=$(X64EMU_ENABLE) -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
+	  -D "FIRMWARE_VER=$$FIRMWARE_VER" -D X64EMU_ENABLE=$(X64EMU_ENABLE) -D DEBUG_PRINT_ERROR_LEVEL=$(DEBUG_PRINT_ERROR_LEVEL) $(EDK_EXTRA_FLAGS)
 	cp "$(EDK_FD)" "$(BUILD)/$(FD_FILE)"
 
 opensbi-normal:

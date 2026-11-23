@@ -33,3 +33,12 @@ when that branch points to the tagged commit. The script never pushes or
 replaces a tag. Git rejects conflicting remote tags when you push.
 Push the Ruyi Firmware tag only after all component pushes succeed.
 This starts the build and prerelease workflow.
+
+## Firmware version
+
+`make prepare` fetches the nearest upstream EDK II stable tag on the
+checked-out fork's first-parent history. Firmware builds use the local
+EDK II checkout. If stable tag metadata is unavailable, they display
+the EDK II commit ID. Set `FIRMWARE_VER` to override the full display
+string, for example `make BOARD=p550 FIRMWARE_VER="Ruyi test" package`.
+Setup and SMBIOS use the same value.

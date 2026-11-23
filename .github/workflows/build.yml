@@ -23,6 +23,8 @@ jobs:
           submodules: recursive
       - name: Install build dependencies
         run: sudo bash ci/install-deps.sh
+      - name: Identify EDK II version
+        run: make prepare-edk2-version
       - name: Build firmware
         run: make BOARD="$BOARD" TARGET="$TARGET" package
       - name: Archive firmware
