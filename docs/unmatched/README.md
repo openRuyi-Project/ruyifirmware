@@ -29,8 +29,8 @@ CPU, memory, PCIe devices and storage.
 
 The serial console uses TTYTERM at 115200 baud, 8N1, without flow control.
 Use a terminal with xterm-compatible keys.
-Setup uses an 80x25 character grid on both consoles. HDMI retains the
-selected pixel resolution.
+Setup uses 80 columns and 25 rows on the serial console and the display.
+On the display, the grid fills the selected GOP resolution.
 
 The release image enables UEFI driver emulation. Change its stored default
 in Platform Settings,
