@@ -26,7 +26,7 @@ Flash SPI from USB Recovery
 
    Check that the product is Milk-V Megrez, then run:
 
-     fastboot flash spi normal-spi.bin
+     fastboot flash firmware normal-spi.bin
 
 5. Wait for "SPI firmware verified" and OKAY. Power off, set the switch
    to Normal and power on. Check that F2 opens Setup on the serial
@@ -39,3 +39,11 @@ Update from UEFI Setup
 Put normal-spi.bin and SHA256SUMS together on a FAT SD card or USB
 drive. Press F2, open Firmware Update, select normal-spi.bin and press Y.
 Wait for "Firmware written and verified." Then restart in Normal mode.
+
+Raw SPI replacement
+-------------------
+
+Use fastboot flash spi0 IMAGE only for a deliberate raw replacement. It
+replaces the entire chip, including UEFI variables, platform settings and
+any factory data. Bytes beyond the supplied file are erased. The older
+name spi selects the same chip. Use firmware for a preserving update.

@@ -35,7 +35,7 @@ Flash SPI from USB Recovery
 
    Check that the product is Pine64 StarPro64, then run:
 
-     fastboot flash spi normal-spi.bin
+     fastboot flash firmware normal-spi.bin
 
 5. Wait for "SPI firmware verified" and OKAY. Power off, disconnect the
    download cable and set SW1 to SPI. Power on. Check that F2 opens
@@ -67,3 +67,11 @@ four MCPU harts and uses system bus access at 469 kHz. For an
 interactive debug session, omit the final -c argument:
 
   openocd -f ch347.cfg -c 'adapter serial SERIAL'
+
+Raw SPI replacement
+-------------------
+
+Use fastboot flash spi0 IMAGE only for a deliberate raw replacement. It
+replaces the entire chip, including UEFI variables, platform settings and
+any factory data. Bytes beyond the supplied file are erased. The older
+name spi selects the same chip. Use firmware for a preserving update.

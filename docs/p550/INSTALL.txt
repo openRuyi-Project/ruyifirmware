@@ -37,7 +37,7 @@ The product must be SiFive HiFive Premier P550. If more than one Fastboot
 device is connected, use fastboot -s SERIAL for both commands.
 After confirming the target, write the image:
 
-  fastboot flash spi normal-spi.bin
+  fastboot flash firmware normal-spi.bin
 
 Wait for the write and verification to complete. Disconnect the download
 cable, press Esc to leave Fastboot, then reset the board.
@@ -162,3 +162,11 @@ The default JTAG clock is 1 MHz. After the default procedure works, an
 optional 5 MHz command is:
 
   openocd -f openocd.cfg -c 'adapter speed 5000' -f load-ram.tcl -c shutdown
+
+Raw SPI replacement
+-------------------
+
+Use fastboot flash spi0 IMAGE only for a deliberate raw replacement. It
+replaces the entire chip, including UEFI variables, platform settings and
+any factory data. Bytes beyond the supplied file are erased. The older
+name spi selects the same chip. Use firmware for a preserving update.
