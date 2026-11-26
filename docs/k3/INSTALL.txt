@@ -57,9 +57,9 @@ Wait for USB Fastboot ready:
 Wait for RAM Recovery - USB Fastboot. For the first installation or when
 switching from another firmware, you must flash the entire SPI NOR:
 
-  fastboot flash spi normal-spi.bin
+  fastboot flash spi0 normal-spi.bin
 
-The spi target replaces the entire flash contents, including UEFI variables
+The spi0 target replaces the entire flash contents, including UEFI variables
 and platform settings. The firmware target requires an existing compatible
 Ruyi Firmware flash layout. Using it for a first installation or migration
 can fail with:
@@ -67,7 +67,7 @@ can fail with:
   Writing 'firmware' FAILED (remote: 'Unsupported')
   fastboot: error: Command failed
 
-In this case, use the flash spi command above.
+In this case, use the flash spi0 command above.
 
 After flash and verification report OKAY:
 
@@ -75,7 +75,7 @@ After flash and verification report OKAY:
 
 Updating an existing Ruyi Firmware installation
 
-Install this settings format once with the full flash spi procedure above.
+Install this settings format once with the full flash spi0 procedure above.
 For later updates, press F9 at boot to enter USB Fastboot. Run:
 
   sha256sum -c SHA256SUMS

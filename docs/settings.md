@@ -55,7 +55,7 @@ saving persistent defaults.
 On the five boards listed below, reflash once when moving from the old
 platform record format. Use the installation guide for your board.
 
-- [K3](k3/INSTALL.txt): use BootROM recovery, then `fastboot flash spi`.
+- [K3](k3/INSTALL.txt): use BootROM recovery, then `fastboot flash spi0`.
 - [Megrez](megrez/INSTALL.txt): start UEFI from the USB recovery disk,
   then write the image to SPI with Firmware Update or USB Fastboot.
 - [StarPro64](starpro64/INSTALL.txt): start UEFI through USB recovery,
