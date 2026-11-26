@@ -11,28 +11,16 @@
  * must run at 0x59000000 for SPI and 0x30008000 for UART recovery, then return.
  */
 
+#include "cpu-clock.h"
+
 typedef unsigned int u32;
 
 #define DIE_ID                  0x21b4003cU
 #define DIE_ID_SHIFT            8
 #define DIE_ADDRESS_STRIDE      0x20000000U
-#define SYSCRG                  0x51828000U
-#define CPU_PLL_CONFIG0         (SYSCRG + 0x64)
-#define CPU_PLL_CONFIG1         (SYSCRG + 0x68)
-#define PLL_STATUS              (SYSCRG + 0xa4)
-#define CPU_CLOCK_CONTROL       (SYSCRG + 0x208)
-#define CPU_PLL_LOCKED          (1U << 5)
-#define CPU_PLL_ENABLE          1U
-/* The core uses PLL output 2 with a 24 MHz reference and divide by 4. */
 #ifndef EIC7700_BOOT_CPU_HZ
 #define EIC7700_BOOT_CPU_HZ     1400000000ULL
 #endif
-#define CPU_PLL_STEP_HZ         6000000ULL
-#define CPU_PLL_FBDIV           (EIC7700_BOOT_CPU_HZ / CPU_PLL_STEP_HZ)
-#define CPU_PLL_FRAC            (((EIC7700_BOOT_CPU_HZ % CPU_PLL_STEP_HZ) << 24) / CPU_PLL_STEP_HZ)
-#define CPU_PLL_CONFIG0_VALUE   ((u32)(CPU_PLL_FBDIV << 20) | 0x1300U)
-#define CPU_PLL_CONFIG1_VALUE   ((u32)(CPU_PLL_FRAC << 4) | 0x0aU)
-#define CPU_CLOCK_CONTROL_VALUE 0xff800000U
 #define UART                    0x50900000U
 #define UART_LINE_STATUS        0x14
 #define UART_TX_EMPTY           (1U << 5)
@@ -46,20 +34,6 @@ typedef unsigned int u32;
 #define FAN_HIGH_COUNT          10000U
 #define FAN_PWM_CONTROL         30U
 #define PWM_ENABLE              1U
-
-static u32 read32(u32 address)
-{
-	u32 value = *(volatile u32 *)address;
-
-	__asm__ volatile ("fence i,r" ::: "memory");
-	return value;
-}
-
-static void write32(u32 address, u32 value)
-{
-	__asm__ volatile ("fence w,o" ::: "memory");
-	*(volatile u32 *)address = value;
-}
 
 static void print_ready(u32 uart)
 {
@@ -80,15 +54,8 @@ int scpu_sys_init(void)
 			 DIE_ADDRESS_STRIDE : 0;
 
 	/* The reference stage always configures the die-0 CPU PLL. */
-	if (read32(PLL_STATUS) & CPU_PLL_LOCKED) {
-		write32(CPU_PLL_CONFIG0, CPU_PLL_CONFIG0_VALUE);
-		write32(CPU_PLL_CONFIG1, CPU_PLL_CONFIG1_VALUE);
-		write32(CPU_PLL_CONFIG0, CPU_PLL_CONFIG0_VALUE | CPU_PLL_ENABLE);
-		while (!(read32(PLL_STATUS) & CPU_PLL_LOCKED))
-			;
-		write32(CPU_CLOCK_CONTROL, CPU_CLOCK_CONTROL_VALUE);
+	if (set_cpu_clock(EIC7700_BOOT_CPU_HZ))
 		print_ready(UART + die_offset);
-	}
 
 	write32(FAN_PIN + die_offset, FAN_PIN_PWM);
 	write32(PWM + die_offset + PWM_CONTROL, 0);

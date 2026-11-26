@@ -8,6 +8,7 @@ from pathlib import Path
 import struct
 import subprocess
 
+from cpu import p550_gpio_rate
 from image import DDR_HEADER, check_ddr
 
 SOURCE = Path(__file__).resolve().parents[2] / 'platforms/eic7700/ddr'
@@ -57,7 +58,7 @@ def jump(source, destination):
             | (((bits >> 11) & 0x01) << 20) | (((bits >> 12) & 0xff) << 12))
 
 
-def build_image(dtb, output, include, cross_compile):
+def build_image(dtb, output, include, cross_compile, late_cpu_rate=None):
     board = board_config(dtb)
     original = (SOURCE / 'ddr_fw.bin').read_bytes()
     if (len(original) != 272552 or
@@ -78,6 +79,10 @@ def build_image(dtb, output, include, cross_compile):
         '-Wl,--no-relax,--build-id=none,-T,' + str(SOURCE / 'ddr.ld'),
         '-I' + str(include), '-DDDR_BOARD_NX=' + str(int(board['nx'])),
     ]
+    if late_cpu_rate is None:
+        late_cpu_rate = p550_gpio_rate(dtb)
+    if late_cpu_rate:
+        flags.append(f'-DP550_GPIO_CPU_RATE={late_cpu_rate}ULL')
     subprocess.run([cross_compile + 'gcc', *flags,
                     *(str(SOURCE / name) for name in SOURCES), '-o', str(elf)], check=True)
     subprocess.run([cross_compile + 'objcopy', '-O', 'binary',

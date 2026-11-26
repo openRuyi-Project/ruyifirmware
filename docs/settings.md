@@ -17,8 +17,9 @@ Update preserves it in the `ruyi-vars` partition on SPI1. With RAM-backed
 variables, changes last until reset.
 
 CPU mode and DDR ECC appear on boards that support them. Save and
-restart to apply a change. On P550, CPU mode controls whether Linux
-can select 1.6 GHz on a board modified for a fixed 0.9 V CPU supply.
+restart to apply a change. On P550, Linux can select up to 1.6 GHz by
+default. CPU mode raises the limit to 1.8 GHz. Both rates require a
+0.9 V CPU supply.
 
 ## Configure an installation image
 

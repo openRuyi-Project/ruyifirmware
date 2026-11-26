@@ -2,52 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Build the EIC7700 SCPU stage and collect the DDR firmware notices."""
 import argparse
-from collections import deque
 from pathlib import Path
 import shutil
 import subprocess
 
+from cpu import boot_cpu_rate, p550_gpio_rate
 from ddr import build_image
-
-
-def boot_cpu_rate(dtb):
-    def get(node, prop, kind='u', default=None):
-        options = [] if default is None else ['-d', default]
-        return subprocess.check_output(
-            ['fdtget', *options, '-t', kind, str(dtb), node, prop], text=True).split()
-
-    def children(node):
-        names = subprocess.check_output(['fdtget', '-l', str(dtb), node], text=True)
-        return [node.rstrip('/') + '/' + name for name in names.split()]
-
-    def enabled(node):
-        return get(node, 'status', 's', default='okay') in (['okay'], ['ok'])
-
-    handle, = get('/cpus/cpu@0', 'operating-points-v2')
-    pending = deque(['/'])
-    while pending:
-        table = pending.popleft()
-        if get(table, 'phandle', default='') == [handle]:
-            break
-        pending.extend(children(table))
-    else:
-        raise ValueError('boot CPU operating-points-v2 phandle not found')
-
-    if not enabled(table) or 'operating-points-v2' not in get(table, 'compatible', 's'):
-        raise ValueError('boot CPU operating point table is disabled or incompatible')
-
-    rates = []
-    for node in children(table):
-        props = subprocess.check_output(['fdtget', '-p', str(dtb), node], text=True).split()
-        if 'opp-hz' not in props or not enabled(node):
-            continue
-        if 'turbo-mode' in props or 'opp-supported-hw' in props:
-            continue
-        high, low = map(int, get(node, 'opp-hz'))
-        rates.append((high << 32) | low)
-    if not rates:
-        raise ValueError('no enabled normal CPU operating point')
-    return max(rates)
 
 
 def main():
@@ -63,6 +23,9 @@ def main():
     ddr = stage / 'ddr'
     build.mkdir(parents=True, exist_ok=True)
 
+    rate = boot_cpu_rate(args.dtb)
+    late_rate = p550_gpio_rate(args.dtb, rate)
+
     def build_stage(name, inputs, isa='rv32imac'):
         elf = build / (name + '.elf')
         flags = [
@@ -71,7 +34,7 @@ def main():
             '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
             '-fno-ident', '-msmall-data-limit=0', '-mno-relax',
             '-nostdlib', '-static', '-Wall', '-Wextra', '-Werror',
-            f'-DEIC7700_BOOT_CPU_HZ={boot_cpu_rate(args.dtb)}ULL',
+            f'-DEIC7700_BOOT_CPU_HZ={1400000000 if late_rate else rate}ULL',
             '-I' + str(sources / 'edk2-ruyi/EswinPlatformPkg/Include'),
             '-Wl,--no-relax,--build-id=none,-T,' + str(stage / (name + '.ld')),
         ]
@@ -82,7 +45,7 @@ def main():
 
     build_stage('sys-init', [stage / 'sys-init.c'])
     build_image(args.dtb, build / 'ddr.bin',
-                sources / 'edk2-ruyi/EswinPlatformPkg/Include', args.cross_compile)
+                sources / 'edk2-ruyi/EswinPlatformPkg/Include', args.cross_compile, late_rate)
     for name in ('LICENSE', 'COPYING'):
         notice = ddr / name
         shutil.copyfile(notice, build / ('ddr-' + name + '.txt'))
