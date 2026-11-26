@@ -36,9 +36,9 @@ def main():
     for name in ('image-checks.json', 'source-revisions.txt', 'build-options.txt',
                  'submodules.txt', 'toolchain.txt'):
         files[name] = build / name
-    for source in sorted((ROOT / 'docs' / board).iterdir()):
-        if source.is_file() and source.suffix in ('.md', '.txt'):
-            files[source.name] = source
+    board_guides = {'k3': ('EC.txt',), 'p550': ('pcie-power.md',)}
+    for name in ('README.md', 'INSTALL.txt', *board_guides.get(board, ())):
+        files[name] = ROOT / 'docs' / board / name
     guides = []
     if not args.board_docs_only:
         files['amd-gop.json'] = build / 'amd-gop.json'
