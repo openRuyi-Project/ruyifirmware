@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board: [k3, unmatched, eic7700, sg2042]
+        board: [k3, unmatched, eic7700, eic7702, sg2042]
         target: [DEBUG, RELEASE]
     env:
       BOARD: ${{ matrix.board }}

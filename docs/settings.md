@@ -12,6 +12,9 @@ cancels pending edits.
 K3, Unmatched, P550, Megrez and StarPro64 store defaults in two SPI
 records. They can save defaults even without nonvolatile UEFI variables.
 
+D560 stores defaults in the `PlatformDefaults` UEFI variable on die 0
+SPI (`spi0`). Firmware Update preserves this variable.
+
 SG2042 stores defaults in the `PlatformDefaults` UEFI variable. Firmware
 Update preserves it in the `ruyi-vars` partition on SPI1. With RAM-backed
 variables, changes last until reset.
@@ -23,7 +26,7 @@ default. CPU mode raises the limit to 1.8 GHz. Both rates require a
 
 ## Configure an installation image
 
-On SG2042, set the defaults in UEFI Setup. On the other boards, use the
+On D560 and SG2042, set the defaults in UEFI Setup. On the other boards, use the
 settings tool from the same release package as the image.
 To inspect its defaults, run:
 
@@ -74,7 +77,7 @@ defaults already stored on the board. Changing the defaults in an update
 image does not replace them. Change installed defaults in Setup, or use
 a program that calls the platform settings protocol.
 
-Firmware Update requires normal-spi.bin and its matching SHA256SUMS in
-the same directory on every board. It checks the image before writing and
+On D560, select `firmware.bin` in Firmware Update. On other boards,
+select `normal-spi.bin`. Keep the matching SHA256SUMS in the same directory. It checks the image before writing and
 verifies the written data. CPU settings and ECC selections are retained
 when valid. DDR training caches are regenerated after a K3 firmware update.

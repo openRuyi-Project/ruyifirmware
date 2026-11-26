@@ -1,0 +1,52 @@
+ESWIN D560 installation
+
+Extract the D560 package and run sha256sum -c SHA256SUMS in that directory.
+The two bootchain files start the recovery firmware. Use firmware.bin to
+update both SPI flashes together.
+
+First automatic D2D calibration
+
+After the first successful flash, the board automatically calibrates
+the link between the two dies on startup if it has no saved calibration.
+Calibration can also start on the first USB recovery boot.
+
+With the board powered off, unplug the D0 FAN and leave the heatsink
+fitted. A running fan can keep the CPU below the required 85 °C and
+cause calibration to fail. Allow about 20 minutes for the first run.
+
+Stay with the board and monitor the temperature on the serial console
+throughout calibration. The chip can overheat and suffer permanent damage
+with the fan disconnected. When both dies report D2D link success,
+reconnect the D0 fan immediately and check that it spins. Power off if
+the temperature rises uncontrollably or you lose temperature monitoring.
+Once calibration is saved, leave the fan connected on subsequent boots
+and updates.
+
+Start USB recovery
+
+1. Power off and fit J13. Connect the lower USB download port (die 0) to
+   the host and power on. Identify its ESWIN-2030 volume. Connect the
+   upper port (die 1) and identify the second volume. Both have the same
+   label.
+2. Copy bootchain-die0.bin to the lower port's volume as boot.bin and
+   bootchain-die1.bin to the upper port's volume as boot.bin. Start both
+   copies together. Each volume disconnects when its die starts.
+3. Watch both serial consoles. After calibration and fan reconnection,
+   wait for the Setup prompt on the die 0 console.
+
+Install to SPI
+
+In Setup, open Firmware Update and select firmware.bin from a FAT volume
+with the matching SHA256SUMS. To install from the host instead, enter
+USB Fastboot and check the board name.
+
+  fastboot getvar product
+
+If the product is ESWIN EIC7702 D560, install the image.
+
+  fastboot flash firmware firmware.bin
+
+Wait for the update to finish. Both methods preserve calibration on both
+dies and UEFI variables on die 0. Power off, remove J13 and the USB
+download cables, then power on to boot from SPI. If the update was
+interrupted, start USB recovery again and reinstall firmware.bin.

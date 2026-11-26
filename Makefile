@@ -8,13 +8,14 @@ SHELL := /bin/bash
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 SOURCES := $(ROOT)/src
 BOARD ?= k3
+PACKAGE_BOARD := $(BOARD)
 TARGET ?= RELEASE
 BUILD ?= $(ROOT)/build/$(BOARD)/$(TARGET)
 BUILD := $(abspath $(BUILD))
 ifeq ($(BOARD),eic7700)
 DIST ?= $(ROOT)/dist
 else
-DIST ?= $(ROOT)/dist/$(BOARD)/$(TARGET)
+DIST ?= $(ROOT)/dist/$(PACKAGE_BOARD)/$(TARGET)
 endif
 JOBS ?= 2
 PYTHON ?= python3

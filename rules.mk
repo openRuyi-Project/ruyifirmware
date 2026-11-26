@@ -13,8 +13,8 @@ SBI_FIRMWARE := $(SBI_BUILD)/platform/generic/firmware/fw_dynamic.elf
 COREBOOT_TARGETS := coreboot-normal
 IMAGE_FILES := normal-spi.bin
 VERIFY_INPUTS := --rom normal-spi.bin normal
-ifeq ($(BOARD),sg2042)
-include $(ROOT)/platforms/sg2042/build.mk
+ifneq ($(filter d560 sg2042,$(PACKAGE_BOARD)),)
+include $(ROOT)/platforms/$(PACKAGE_BOARD)/build.mk
 else
 ifeq ($(RECOVERY_METHOD),jtag)
 COREBOOT_TARGETS += coreboot-recovery
@@ -200,8 +200,9 @@ endif
 
 help:
 	printf '%s\n' 'make BOARD=<board> TARGET=RELEASE package' \
-	  'Boards: $(filter-out eic7700,$(BOARDS))' \
+	  'Boards: $(filter-out eic7700 eic7702,$(BOARDS))' \
 	  'BOARD=eic7700 packages P550, Megrez and StarPro64 with one UEFI build.' \
+	  'BOARD=eic7702 packages D560.' \
 	  'TARGET=DEBUG enables diagnostic logging.' \
 	  'Builds: build/<board>/<target>; packages: dist/<board>/<target>' \
 	  'PXE and HTTP boot are configured in UEFI Setup.' \

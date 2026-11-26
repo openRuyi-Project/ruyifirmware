@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+include $(ROOT)/platforms/eic7700.mk
+EDK_EXTRA_FLAGS += -D D560=TRUE
+X64EMU_ENABLE := $(EMULATION_ENABLE)
+COREBOOT_CONFIG := config.eswin_d560
+COREBOOT_CROSS_COMPILE := $(CROSS_COMPILE)
+SBI_ADDRESS := 0x80800000
+PAYLOAD_ADDRESS := 0x82200000
+DTB_FILE := eic7702-eswin-d560.dtb
+D560_ESWIN_DIR ?= $(BUILD)/eswin
+PACKAGE_COMMON := --board-docs-only
+PACKAGE_EXTRA = $(if $(filter TRUE,$(X64EMU_ENABLE)),"$(BUILD)/amd-gop.json")
