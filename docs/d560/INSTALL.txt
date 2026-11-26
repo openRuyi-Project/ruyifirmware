@@ -50,3 +50,9 @@ Wait for the update to finish. Both methods preserve calibration on both
 dies and UEFI variables on die 0. Power off, remove J13 and the USB
 download cables, then power on to boot from SPI. If the update was
 interrupted, start USB recovery again and reinstall firmware.bin.
+
+Physical SPI targets
+
+Fastboot exposes the die 0 flash as spi0 and the die 1 flash as spi1.
+Raw writes replace the selected chip and can erase its calibration or
+UEFI variables. Use the firmware target for normal updates.
