@@ -12,13 +12,18 @@ image contains an MBR and one FAT32 partition. Verify the package first:
 Write recovery-sd.img to the whole card with a disk image writer.
 This replaces its partition table and contents. Select the board's SD
 boot mode. The FAT root contains fip.bin (SCP firmware) and zsbl.bin
-(coreboot with OpenSBI, EDK2 and the three device trees).
+(coreboot with OpenSBI and EDK2). The riscv64 directory contains the
+three board device trees for the SCP.
 
 To keep an existing card with an MBR and a FAT32 first partition, mount
-that partition and copy the two boot files to its root. For example, if
-the partition is mounted at /mnt/sd, run mcopy from the mtools package:
+the partition and copy the boot files and board device trees. The
+commands below replace existing files with the same names. If you use a
+custom SCP device tree, save it first and restore it under your board's
+filename after copying. For a partition mounted at /mnt/sd, run:
 
-  mcopy -i recovery-sd.img@@1048576 ::fip.bin ::zsbl.bin /mnt/sd/
+  mcopy -o -i recovery-sd.img@@1048576 ::fip.bin ::zsbl.bin /mnt/sd/
+  mkdir -p /mnt/sd/riscv64
+  mcopy -o -i recovery-sd.img@@1048576 '::/riscv64/*.dtb' /mnt/sd/riscv64/
 
 Unmount the partition before removing the card.
 

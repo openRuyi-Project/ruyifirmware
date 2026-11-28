@@ -13,7 +13,7 @@ Coreboot reads the board ID that the SCP records at `0x703001023c`.
 The SCP reads the board identity from the MCU. On SD it opens the
 matching file in `/riscv64/`. On SPI1 it looks for a partition with
 that filename, then for the same file in the coreboot filesystem inside
-`zsbl.bin`.
+`zsbl.bin`. Both release images include all three board DTBs.
 
 To supply a custom DTB for SCP PCIe setup, use the filename and root
 compatible for your board. Coreboot selects its own copy from

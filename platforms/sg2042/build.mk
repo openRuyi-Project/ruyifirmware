@@ -38,6 +38,10 @@ recovery: normal
 	mpartition -I -c -s 32 -h 64 -T 0x0c -b 2048 -a p:
 	mformat -F -c 1 -v BOOTFIRM p:
 	mcopy "$(SG2042_FIP_FILE)" "$(BUILD)/zsbl.bin" p:/
+	mmd p:/riscv64
+	for name in $(SG2042_DTBS); do
+	  mcopy "$(BUILD)/$$name.dtb" p:/riscv64/
+	done
 	mv recovery-sd.img "$(BUILD)/"
 
 source-info: sg2042-fip

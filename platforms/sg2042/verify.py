@@ -13,6 +13,13 @@ import tempfile
 from elftools.elf.elffile import ELFFile
 
 
+BOARDS = {
+    'sg2042-evb-v1': 'sophgo,sg2042-evb-v1',
+    'sg2042-milkv-pioneer': 'milkv,pioneer',
+    'sg2042-evb-v2': 'sophgo,sg2042-evb-v2',
+}
+
+
 def require(valid, message):
     if not valid:
         raise ValueError(message)
@@ -35,15 +42,12 @@ def check_self(data, segments, entry):
 
 def check_cbfs(build, rom, fd, sbi):
     tool = build / 'coreboot-normal/cbfstool'
-    boards = {'sg2042-evb-v1': 'sophgo,sg2042-evb-v1',
-              'sg2042-milkv-pioneer': 'milkv,pioneer',
-              'sg2042-evb-v2': 'sophgo,sg2042-evb-v2'}
     with tempfile.TemporaryDirectory() as temp:
         path = Path(temp) / 'entry'
         def extract(name):
             subprocess.run([tool, rom, 'extract', '-U', '-n', name, '-f', path], check=True)
             return path.read_bytes()
-        for name, compatible in boards.items():
+        for name, compatible in BOARDS.items():
             name += '.dtb'
             require(extract(name) == (build / name).read_bytes(), f'{name} differs from Linux DTB')
             actual = subprocess.check_output(['fdtget', path, '/', 'compatible'], text=True).split()
@@ -100,7 +104,11 @@ def main():
     require(sector_bytes == 512 and volume_sectors == sectors and fat_sectors > 0 and
             cluster_sectors > 0 and data_sectors // cluster_sectors >= 65525,
             'SD partition does not meet the FAT32 cluster count requirement')
-    for name, content in [('fip.bin', fip), ('zsbl.bin', rom)]:
+    files = {'fip.bin': fip, 'zsbl.bin': rom}
+    for board in BOARDS:
+        name = board + '.dtb'
+        files['riscv64/' + name] = (build / name).read_bytes()
+    for name, content in files.items():
         actual = subprocess.check_output(['mcopy', '-i', f'{sd}@@{512 * start}', '::/' + name, '-'])
         require(actual == content, f'SD {name} differs')
     images = {}
