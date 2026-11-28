@@ -10,11 +10,17 @@ Coreboot reads the board ID that the SCP records at `0x703001023c`.
 | `0x03` | Milk-V Pioneer | `sg2042-milkv-pioneer.dtb` |
 | `0x05` | SOPHGO EVB v2 | `sg2042-evb-v2.dtb` |
 
-Coreboot loads the selected tree from CBFS and adds the installed memory
-ranges and disabled CPU clusters. It passes the tree to OpenSBI and the
-SG2042 EDK2 payload. EDK2 uses the tree for PCIe controller selection and
-publishes it to the operating system. Coreboot stops on other board IDs,
-including Pisces (`0x04`).
+The SCP reads the board identity from the MCU. On SD it opens the
+matching file in `/riscv64/`. On SPI1 it looks for a partition with
+that filename, then for the same file in the coreboot filesystem inside
+`zsbl.bin`.
+
+To supply a custom DTB for SCP PCIe setup, use the filename and root
+compatible for your board. Coreboot selects its own copy from
+`zsbl.bin` by board ID. It adds the installed memory ranges and disabled
+CPU clusters and passes the tree to OpenSBI and EDK2. EDK2 publishes
+the system device tree to the operating system. Coreboot stops on
+other board IDs, including Pisces (`0x04`).
 
 ## EVB v2 display
 
